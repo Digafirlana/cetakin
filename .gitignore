@@ -1,0 +1,10 @@
+/target
+*.pdf
+*.docx
+*.png
+*.jpg
+!assets/**/*.png
+!assets/**/*.jpg
+.idea/
+.vscode/
+*.log
