@@ -140,9 +140,7 @@ fn render_sheet_page(
                 image_cache.insert(path.clone(), img.clone());
                 img
             };
-            let img = Rc::new(prepare_for_cell(
-                &source, cell.w_mm, cell.h_mm, dpi, fit,
-            ));
+            let img = Rc::new(prepare_for_cell(&source, cell.w_mm, cell.h_mm, dpi, fit));
             prepared_cache.insert(key, img.clone());
             img
         };
@@ -305,8 +303,7 @@ pub fn text_to_pdf(
     pages_text: &[String],
     progress: &mut Progress<'_>,
 ) -> Result<(), String> {
-    let (doc, first_page, first_layer) =
-        PdfDocument::new(title, Mm(210.0), Mm(297.0), "Teks");
+    let (doc, first_page, first_layer) = PdfDocument::new(title, Mm(210.0), Mm(297.0), "Teks");
     let font = doc
         .add_builtin_font(BuiltinFont::Helvetica)
         .map_err(|e| format!("Font PDF gagal: {e}"))?;
@@ -432,5 +429,41 @@ mod tests {
     #[test]
     fn sanitize_non_latin() {
         assert_eq!(sanitize_text("Halo — dunia 日本語"), "Halo - dunia ???");
+    }
+
+    #[test]
+    fn exports_sheet_pdf_with_photo() {
+        use crate::model::{MarginPreset, PaperPreset, PhotoPreset, PhotoSize};
+
+        let dir = std::env::temp_dir().join(format!(
+            "cetakin-test-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis())
+                .unwrap_or(0)
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let photo = dir.join("foto.png");
+        let img = image::RgbImage::from_fn(240, 320, |x, y| {
+            image::Rgb([(x % 256) as u8, (y % 256) as u8, 140])
+        });
+        img.save(&photo).unwrap();
+
+        let mut settings = SheetSettings::default();
+        settings.paper = PaperPreset::A4;
+        settings.photo = PhotoSize::from_preset(PhotoPreset::Cm3x4);
+        settings.margin_preset = MarginPreset::Narrow;
+        settings.dpi = 150;
+        let layout = crate::layout::compute(&settings);
+        assert!(!layout.cells.is_empty());
+        let pages = vec![vec![Some(photo); layout.cells.len()]];
+
+        let output = dir.join("lembar.pdf");
+        export_sheet_pdf(&output, &settings, &layout, &pages, &mut |_, _| {}).unwrap();
+        let bytes = std::fs::read(&output).unwrap();
+        assert!(bytes.starts_with(b"%PDF"));
+        assert!(bytes.len() > 2_000);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -146,11 +146,7 @@ pub fn write_pdf_import(
             if i > 0 {
                 document.push_str(&page_break());
             }
-            document.push_str(&paragraph(
-                &format!("Halaman {}", i + 1),
-                true,
-                22,
-            ));
+            document.push_str(&paragraph(&format!("Halaman {}", i + 1), true, 22));
             for block in page.text.split('\n') {
                 if !block.trim().is_empty() {
                     document.push_str(&paragraph(block, false, 20));
@@ -229,11 +225,7 @@ pub fn write_pdf_import(
     write(&mut zip, "_rels/.rels", root_rels.as_bytes())?;
     write(&mut zip, "word/document.xml", document.as_bytes())?;
     write(&mut zip, "word/styles.xml", styles.as_bytes())?;
-    write(
-        &mut zip,
-        "word/_rels/document.xml.rels",
-        rels.as_bytes(),
-    )?;
+    write(&mut zip, "word/_rels/document.xml.rels", rels.as_bytes())?;
     if include_images {
         for (i, page) in pages.iter().enumerate() {
             if let Some(img) = &page.image {
@@ -245,7 +237,8 @@ pub fn write_pdf_import(
             }
         }
     }
-    zip.finish().map_err(|e| format!("Gagal finalisasi DOCX: {e}"))?;
+    zip.finish()
+        .map_err(|e| format!("Gagal finalisasi DOCX: {e}"))?;
     Ok(())
 }
 
@@ -333,7 +326,10 @@ fn decode_entities(text: &str) -> String {
         };
         let end = start + end_rel;
         let entity = &out[start + 2..end];
-        let parsed = if let Some(hex) = entity.strip_prefix('x').or_else(|| entity.strip_prefix('X')) {
+        let parsed = if let Some(hex) = entity
+            .strip_prefix('x')
+            .or_else(|| entity.strip_prefix('X'))
+        {
             u32::from_str_radix(hex, 16).ok()
         } else {
             entity.parse::<u32>().ok()
@@ -363,6 +359,6 @@ mod tests {
 
     #[test]
     fn decodes_numeric_entities() {
-        assert_eq!(decode_entities("A&#65;B&#x42;C"), "ABBC");
+        assert_eq!(decode_entities("&#65;B&#x42;C"), "ABBC");
     }
 }

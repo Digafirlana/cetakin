@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PaperPreset {
     A4,
@@ -61,9 +60,7 @@ impl PaperPreset {
     }
 }
 
-
 // Photo size
-
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PhotoPreset {
@@ -195,7 +192,6 @@ impl PhotoSize {
 }
 
 // Margins
-
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Margins {

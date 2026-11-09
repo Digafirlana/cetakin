@@ -270,11 +270,7 @@ fn layout_packet(settings: &SheetSettings, page_w: f32, page_h: f32) -> SheetLay
     }
 
     // Tinggi terpakai dari sel-sel aktual.
-    let used_h = cells
-        .iter()
-        .map(|c| c.bottom_mm())
-        .fold(0.0f32, f32::max)
-        - margins.top_mm;
+    let used_h = cells.iter().map(|c| c.bottom_mm()).fold(0.0f32, f32::max) - margins.top_mm;
 
     let mut warnings = Vec::new();
     if overflow > 0 {
@@ -283,7 +279,10 @@ fn layout_packet(settings: &SheetSettings, page_w: f32, page_h: f32) -> SheetLay
             overflow
         ));
     }
-    if cells.iter().any(|c| c.w_mm > avail_w + 0.01 || c.h_mm > avail_h + 0.01) {
+    if cells
+        .iter()
+        .any(|c| c.w_mm > avail_w + 0.01 || c.h_mm > avail_h + 0.01)
+    {
         warnings.push(
             "Ada ukuran foto yang lebih besar dari area cetak. Kurangi margin atau ganti kertas."
                 .to_string(),
@@ -295,19 +294,13 @@ fn layout_packet(settings: &SheetSettings, page_w: f32, page_h: f32) -> SheetLay
         .map(|c| c.x_mm)
         .fold(f32::MAX, f32::min)
         .min(page_w);
-    let right = cells
-        .iter()
-        .map(|c| c.right_mm())
-        .fold(0.0, f32::max);
+    let right = cells.iter().map(|c| c.right_mm()).fold(0.0, f32::max);
     let top = cells
         .iter()
         .map(|c| c.y_mm)
         .fold(f32::MAX, f32::min)
         .min(page_h);
-    let bottom = cells
-        .iter()
-        .map(|c| c.bottom_mm())
-        .fold(0.0, f32::max);
+    let bottom = cells.iter().map(|c| c.bottom_mm()).fold(0.0, f32::max);
 
     let effective = if cells.is_empty() {
         margins
@@ -338,7 +331,10 @@ fn layout_packet(settings: &SheetSettings, page_w: f32, page_h: f32) -> SheetLay
 /// Segmen garis potong yang akan digambar pada halaman (mm).
 /// `Frame` menggambar bingkai tiap foto, `Guillotine` meneruskan garis
 /// sampai tepi kertas agar mudah dipotong massal.
-pub fn cut_segments(layout: &SheetLayout, style: crate::model::CutStyle) -> Vec<(f32, f32, f32, f32)> {
+pub fn cut_segments(
+    layout: &SheetLayout,
+    style: crate::model::CutStyle,
+) -> Vec<(f32, f32, f32, f32)> {
     use crate::model::CutStyle;
     let mut segs = Vec::new();
     match style {
@@ -412,9 +408,11 @@ mod tests {
         let mut s = single(PhotoPreset::Cm4x6, PageOrientation::Auto);
         s.photo.landscape = true;
         let l = compute(&s);
-        assert_eq!(l.page_w_mm, 297.0);
-        assert_eq!(l.page_h_mm, 210.0);
-        assert_eq!(l.cells.len(), 12);
+        // Dengan margin Normal, halaman potret memuat 10 foto 6×4 cm,
+        // sedangkan halaman mendatar hanya 9. Auto memilih yang terbanyak.
+        assert_eq!(l.page_w_mm, 210.0);
+        assert_eq!(l.page_h_mm, 297.0);
+        assert_eq!(l.cells.len(), 10);
     }
 
     #[test]

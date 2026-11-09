@@ -175,14 +175,8 @@ impl CetakinApp {
             .ok()
             .and_then(|raw| serde_json::from_str(&raw).ok());
 
-        let settings = prefs
-            .as_ref()
-            .map(|p| p.sheet.clone())
-            .unwrap_or_default();
-        let studio = prefs
-            .as_ref()
-            .map(|p| p.studio.clone())
-            .unwrap_or_default();
+        let settings = prefs.as_ref().map(|p| p.sheet.clone()).unwrap_or_default();
+        let studio = prefs.as_ref().map(|p| p.studio.clone()).unwrap_or_default();
         let last_dir = prefs.and_then(|p| p.last_dir);
 
         Self {
@@ -281,27 +275,21 @@ impl CetakinApp {
         self.texture_errors.clear();
         self.active_photo = 0;
         self.confirm_clear = false;
-        self.toast_info("Daftar foto dibersihkan", "Impor foto baru untuk mulai lagi.");
+        self.toast_info(
+            "Daftar foto dibersihkan",
+            "Impor foto baru untuk mulai lagi.",
+        );
     }
 
     pub fn active_path(&self) -> Option<PathBuf> {
-        self.photos
-            .get(self.active_photo)
-            .map(|p| p.path.clone())
+        self.photos.get(self.active_photo).map(|p| p.path.clone())
     }
 
     pub fn photo_dims(&self, path: &Path) -> Option<(u32, u32)> {
-        self.photos
-            .iter()
-            .find(|p| p.path == path)
-            .map(|p| p.dims)
+        self.photos.iter().find(|p| p.path == path).map(|p| p.dims)
     }
 
-    pub fn texture_for(
-        &mut self,
-        ctx: &egui::Context,
-        path: &Path,
-    ) -> Option<egui::TextureHandle> {
+    pub fn texture_for(&mut self, ctx: &egui::Context, path: &Path) -> Option<egui::TextureHandle> {
         if let Some(tex) = self.textures.get(path) {
             return Some(tex.clone());
         }
@@ -312,11 +300,8 @@ impl CetakinApp {
             Ok(img) => {
                 let size = [img.width() as usize, img.height() as usize];
                 let color = egui::ColorImage::from_rgba_unmultiplied(size, img.as_raw());
-                let tex = ctx.load_texture(
-                    path.to_string_lossy(),
-                    color,
-                    egui::TextureOptions::LINEAR,
-                );
+                let tex =
+                    ctx.load_texture(path.to_string_lossy(), color, egui::TextureOptions::LINEAR);
                 self.textures.insert(path.to_path_buf(), tex.clone());
                 Some(tex)
             }
@@ -346,8 +331,7 @@ impl CetakinApp {
                             Some(self.active_photo.min(self.photos.len() - 1))
                         }
                     });
-                    idx.and_then(|i| self.photos.get(i))
-                        .map(|p| p.path.clone())
+                    idx.and_then(|i| self.photos.get(i)).map(|p| p.path.clone())
                 })
                 .collect(),
         }
@@ -382,8 +366,7 @@ impl CetakinApp {
                                 Some(self.active_photo.min(self.photos.len() - 1))
                             }
                         });
-                        idx.and_then(|i| self.photos.get(i))
-                            .map(|p| p.path.clone())
+                        idx.and_then(|i| self.photos.get(i)).map(|p| p.path.clone())
                     })
                     .collect();
                 vec![slots]
@@ -697,13 +680,7 @@ impl CetakinApp {
         self.sidebar_status(ui);
     }
 
-    fn nav_item(
-        &self,
-        ui: &mut egui::Ui,
-        icon: theme::Icon,
-        label: &str,
-        selected: bool,
-    ) -> bool {
+    fn nav_item(&self, ui: &mut egui::Ui, icon: theme::Icon, label: &str, selected: bool) -> bool {
         let height = 44.0;
         let (rect, response) = ui.allocate_exact_size(
             Vec2::new(ui.available_width(), height),
@@ -731,7 +708,11 @@ impl CetakinApp {
             ui.painter(),
             icon_rect,
             icon,
-            if selected { theme::ACCENT } else { theme::MUTED },
+            if selected {
+                theme::ACCENT
+            } else {
+                theme::MUTED
+            },
             1.5,
         );
         ui.painter().text(
@@ -784,14 +765,14 @@ impl CetakinApp {
         ui.horizontal(|ui| {
             if self.job.is_some() {
                 ui.spinner();
-                ui.label(
-                    RichText::new("Memproses…")
-                        .size(11.5)
-                        .color(theme::YELLOW),
-                );
+                ui.label(RichText::new("Memproses…").size(11.5).color(theme::YELLOW));
             } else {
                 theme::dot(ui, theme::ACCENT);
-                ui.label(RichText::new("Siap mencetak").size(11.5).color(theme::MUTED));
+                ui.label(
+                    RichText::new("Siap mencetak")
+                        .size(11.5)
+                        .color(theme::MUTED),
+                );
             }
         });
         ui.label(
@@ -901,20 +882,11 @@ impl CetakinApp {
                         ui.set_max_width(340.0);
                         ui.horizontal(|ui| {
                             theme::dot(ui, color);
-                            ui.label(
-                                RichText::new(&title)
-                                    .size(13.0)
-                                    .strong()
-                                    .color(theme::TEXT),
-                            );
+                            ui.label(RichText::new(&title).size(13.0).strong().color(theme::TEXT));
                         });
                         if !detail.is_empty() {
                             ui.add_space(3.0);
-                            ui.label(
-                                RichText::new(&detail)
-                                    .size(11.5)
-                                    .color(theme::MUTED),
-                            );
+                            ui.label(RichText::new(&detail).size(11.5).color(theme::MUTED));
                         }
                     });
             });
@@ -947,12 +919,7 @@ impl CetakinApp {
                         ui.set_width(330.0);
                         ui.horizontal(|ui| {
                             ui.spinner();
-                            ui.label(
-                                RichText::new(&label)
-                                    .size(13.0)
-                                    .strong()
-                                    .color(theme::TEXT),
-                            );
+                            ui.label(RichText::new(&label).size(13.0).strong().color(theme::TEXT));
                         });
                         ui.add_space(8.0);
                         ui.add(
@@ -961,11 +928,7 @@ impl CetakinApp {
                                 .show_percentage(),
                         );
                         ui.add_space(2.0);
-                        ui.label(
-                            RichText::new(&message)
-                                .size(11.0)
-                                .color(theme::MUTED),
-                        );
+                        ui.label(RichText::new(&message).size(11.0).color(theme::MUTED));
                     });
             });
         ctx.request_repaint_after(Duration::from_millis(120));
@@ -1010,16 +973,12 @@ impl eframe::App for CetakinApp {
             .show(ui, |ui| self.sidebar(ui));
 
         egui::CentralPanel::default()
-            .frame(
-                egui::Frame::new()
-                    .fill(theme::BG)
-                    .inner_margin(Margin {
-                        left: 24,
-                        right: 24,
-                        top: 18,
-                        bottom: 18,
-                    }),
-            )
+            .frame(egui::Frame::new().fill(theme::BG).inner_margin(Margin {
+                left: 24,
+                right: 24,
+                top: 18,
+                bottom: 18,
+            }))
             .show(ui, |ui| {
                 self.header(ui);
                 match self.tab {
@@ -1054,12 +1013,7 @@ pub fn card_title(ui: &mut egui::Ui, icon: theme::Icon, title: &str) {
     ui.horizontal(|ui| {
         let (rect, _) = ui.allocate_exact_size(Vec2::splat(18.0), egui::Sense::hover());
         theme::icon(ui.painter(), rect, icon, theme::ACCENT, 1.5);
-        ui.label(
-            RichText::new(title)
-                .size(13.5)
-                .strong()
-                .color(theme::TEXT),
-        );
+        ui.label(RichText::new(title).size(13.5).strong().color(theme::TEXT));
     });
 }
 
@@ -1129,8 +1083,8 @@ pub fn paint_photo(
         ImageFit::Contain => {
             painter.rect_filled(rect, CornerRadius::ZERO, Color32::WHITE);
             let tex_size = tex.size_vec2();
-            let scale = (rect.width() / tex_size.x.max(1.0))
-                .min(rect.height() / tex_size.y.max(1.0));
+            let scale =
+                (rect.width() / tex_size.x.max(1.0)).min(rect.height() / tex_size.y.max(1.0));
             let size = tex_size * scale;
             let target = egui::Rect::from_center_size(rect.center(), size);
             painter.image(
@@ -1158,10 +1112,7 @@ pub fn unique_path(path: PathBuf) -> PathBuf {
     if !path.exists() {
         return path;
     }
-    let stem = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("hasil");
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("hasil");
     let ext = path
         .extension()
         .and_then(|s| s.to_str())
@@ -1208,7 +1159,9 @@ pub fn open_folder(path: &Path) {
     let folder = if path.is_dir() {
         path.to_path_buf()
     } else {
-        path.parent().map(Path::to_path_buf).unwrap_or_else(|| path.to_path_buf())
+        path.parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| path.to_path_buf())
     };
     let _ = open::that_detached(folder);
 }

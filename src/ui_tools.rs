@@ -11,9 +11,7 @@ use crate::app::{
 use crate::convert::{self, ToolStatus};
 use crate::image_utils::{self, format_bytes};
 use crate::layout;
-use crate::model::{
-    MarginPreset, PageOrientation, PaperPreset, PhotoPreset, PhotoSize, SheetMode,
-};
+use crate::model::{MarginPreset, PageOrientation, PaperPreset, PhotoPreset, PhotoSize, SheetMode};
 use crate::theme;
 
 // Kertas & foto yang dipakai pada tabel kapasitas.
@@ -126,10 +124,8 @@ impl CetakinApp {
             ui.add_space(10.0);
 
             let Some(path) = self.inspector.clone() else {
-                let (rect, response) = ui.allocate_exact_size(
-                    Vec2::new(ui.available_width(), 210.0),
-                    Sense::click(),
-                );
+                let (rect, response) =
+                    ui.allocate_exact_size(Vec2::new(ui.available_width(), 210.0), Sense::click());
                 crate::app::dashed_rect(
                     ui.painter(),
                     rect.shrink(1.0),
@@ -176,8 +172,7 @@ impl CetakinApp {
             }
 
             let texture = self.texture_for(ui.ctx(), &path);
-            let dims = image_utils::oriented_dimensions(&path)
-                .unwrap_or((0, 0));
+            let dims = image_utils::oriented_dimensions(&path).unwrap_or((0, 0));
             let bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
 
             ui.horizontal(|ui| {
@@ -254,15 +249,9 @@ impl CetakinApp {
                             _ => theme::RED,
                         };
                         ui.horizontal(|ui| {
-                            ui.label(
-                                RichText::new(label).size(10.5).color(theme::MUTED),
-                            );
+                            ui.label(RichText::new(label).size(10.5).color(theme::MUTED));
                             ui.add_space(4.0);
-                            theme::badge(
-                                ui,
-                                &format!("{dpi:.0} DPI · {quality}"),
-                                color,
-                            );
+                            theme::badge(ui, &format!("{dpi:.0} DPI · {quality}"), color);
                         });
                     }
                 });
@@ -274,9 +263,7 @@ impl CetakinApp {
                     if !self.photos.iter().any(|p| p.path == path) {
                         self.add_photos(vec![path.clone()]);
                     }
-                    if let Some(index) =
-                        self.photos.iter().position(|p| p.path == path)
-                    {
+                    if let Some(index) = self.photos.iter().position(|p| p.path == path) {
                         self.active_photo = index;
                         self.tab = crate::app::Tab::Sheet;
                         self.toast_success(
@@ -297,7 +284,11 @@ impl CetakinApp {
                         } else {
                             "Belum di daftar cetak"
                         },
-                        if supported { theme::ACCENT } else { theme::MUTED },
+                        if supported {
+                            theme::ACCENT
+                        } else {
+                            theme::MUTED
+                        },
                     );
                 });
             });
@@ -403,11 +394,7 @@ impl CetakinApp {
                                     (result.page_h_mm - result.margins.vertical()) / 10.0
                                 ),
                             );
-                            label_value(
-                                ui,
-                                "Margin",
-                                &scratch.margin_preset.label(),
-                            );
+                            label_value(ui, "Margin", &scratch.margin_preset.label());
                         });
                     });
                 });
@@ -498,7 +485,7 @@ impl CetakinApp {
                 });
                 ui.label(
                     RichText::new(if cfg!(windows) {
-                        "Di Windows, pastikan printer terpasang di Settings → Printer & scanner. Lalu tekan Segarkan."
+                        "Di Windows, pastikan printer terpasang di Settings > Printer & scanner. Lalu tekan Segarkan."
                     } else {
                         "Di Linux, pastikan CUPS aktif (systemctl start cups) dan printer ditambahkan. Lalu tekan Segarkan."
                     })
@@ -617,7 +604,7 @@ impl CetakinApp {
                 (
                     "LibreOffice",
                     self.tools.libreoffice.clone(),
-                    "Word → PDF dengan layout asli",
+                    "Word ke PDF dengan layout asli",
                 ),
                 (
                     "Poppler · pdftoppm",
@@ -627,7 +614,7 @@ impl CetakinApp {
                 (
                     "Poppler · pdftotext",
                     self.tools.pdftotext.clone(),
-                    "Ekstraksi teks PDF → Word",
+                    "Ekstraksi teks PDF ke Word",
                 ),
                 (
                     "MuPDF · mutool",
@@ -774,15 +761,17 @@ impl CetakinApp {
             card_title(ui, theme::Icon::Settings, "Bawaan Lembar Cetak");
             ui.add_space(9.0);
 
-            settings_combo(ui, "set-paper", "Kertas", self.settings.paper.label(), |ui| {
-                for preset in PaperPreset::ALL {
-                    ui.selectable_value(
-                        &mut self.settings.paper,
-                        preset,
-                        preset.label(),
-                    );
-                }
-            });
+            settings_combo(
+                ui,
+                "set-paper",
+                "Kertas",
+                self.settings.paper.label(),
+                |ui| {
+                    for preset in PaperPreset::ALL {
+                        ui.selectable_value(&mut self.settings.paper, preset, preset.label());
+                    }
+                },
+            );
             settings_combo(
                 ui,
                 "set-orientation",
@@ -790,11 +779,7 @@ impl CetakinApp {
                 self.settings.orientation.label(),
                 |ui| {
                     for preset in PageOrientation::ALL {
-                        ui.selectable_value(
-                            &mut self.settings.orientation,
-                            preset,
-                            preset.label(),
-                        );
+                        ui.selectable_value(&mut self.settings.orientation, preset, preset.label());
                     }
                 },
             );
@@ -835,11 +820,7 @@ impl CetakinApp {
                 &format!("{} DPI", self.settings.dpi),
                 |ui| {
                     for dpi in [150u32, 300, 600] {
-                        ui.selectable_value(
-                            &mut self.settings.dpi,
-                            dpi,
-                            format!("{dpi} DPI"),
-                        );
+                        ui.selectable_value(&mut self.settings.dpi, dpi, format!("{dpi} DPI"));
                     }
                 },
             );
@@ -936,9 +917,7 @@ impl CetakinApp {
                     ui.horizontal(|ui| {
                         ui.label(
                             RichText::new(
-                                path.file_name()
-                                    .and_then(|n| n.to_str())
-                                    .unwrap_or("hasil"),
+                                path.file_name().and_then(|n| n.to_str()).unwrap_or("hasil"),
                             )
                             .size(10.5)
                             .color(theme::TEXT),
@@ -1080,16 +1059,14 @@ impl CetakinApp {
 // ---------------------------------------------------------------------------
 
 fn capacity_state(ui: &mut egui::Ui) -> (usize, usize) {
-    ui.data(|d| {
-        d.get_temp::<(usize, usize)>(egui::Id::unique("cetakin-capacity-state"))
-    })
-    .map(|(paper, photo)| {
-        (
-            paper.min(CAPACITY_PAPERS.len() - 1),
-            photo.min(CAPACITY_PHOTOS.len() - 1),
-        )
-    })
-    .unwrap_or((0, 1))
+    ui.data(|d| d.get_temp::<(usize, usize)>(egui::Id::unique("cetakin-capacity-state")))
+        .map(|(paper, photo)| {
+            (
+                paper.min(CAPACITY_PAPERS.len() - 1),
+                photo.min(CAPACITY_PHOTOS.len() - 1),
+            )
+        })
+        .unwrap_or((0, 1))
 }
 
 fn store_capacity_state(ui: &mut egui::Ui, state: (usize, usize)) {

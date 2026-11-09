@@ -6,8 +6,7 @@ use eframe::egui::{
 };
 
 use crate::app::{
-    card_title, cover_uv, drag_cm, label_value, safe_slug, temp_pdf, CetakinApp,
-    JobResult, JobTag,
+    card_title, cover_uv, drag_cm, label_value, safe_slug, temp_pdf, CetakinApp, JobResult, JobTag,
 };
 use crate::convert;
 use crate::image_utils;
@@ -25,18 +24,14 @@ impl CetakinApp {
     pub fn sheet_tab(&mut self, ui: &mut egui::Ui) {
         let layout = layout::compute(&self.settings);
         egui::Panel::left("cetakin-sheet-settings")
-            .exact_size(378.0)
+            .exact_size(362.0)
             .resizable(false)
-            .frame(
-                egui::Frame::new()
-                    .fill(theme::BG)
-                    .inner_margin(Margin {
-                        left: 0,
-                        right: 16,
-                        top: 0,
-                        bottom: 0,
-                    }),
-            )
+            .frame(egui::Frame::new().fill(theme::BG).inner_margin(Margin {
+                left: 0,
+                right: 16,
+                top: 0,
+                bottom: 0,
+            }))
             .show(ui, |ui| {
                 ScrollArea::vertical()
                     .id_salt("sheet-settings-scroll")
@@ -85,11 +80,7 @@ impl CetakinApp {
                         PageOrientation::Landscape => 1,
                         PageOrientation::Auto => 2,
                     };
-                    theme::segmented(
-                        ui,
-                        &mut sel,
-                        &["Potret", "Mendatar", "Otomatis"],
-                    );
+                    theme::segmented_rtl(ui, &mut sel, &["Potret", "Mendatar", "Otomatis"]);
                     if sel
                         != match self.settings.orientation {
                             PageOrientation::Portrait => 0,
@@ -118,7 +109,15 @@ impl CetakinApp {
 
             ui.add_space(10.0);
             ui.horizontal(|ui| {
-                theme::badge(ui, &format!("{:.1} × {:.1} cm", layout.page_w_mm / 10.0, layout.page_h_mm / 10.0), theme::ACCENT);
+                theme::badge(
+                    ui,
+                    &format!(
+                        "{:.1} × {:.1} cm",
+                        layout.page_w_mm / 10.0,
+                        layout.page_h_mm / 10.0
+                    ),
+                    theme::ACCENT,
+                );
                 if self.settings.orientation == PageOrientation::Auto {
                     theme::badge(ui, "Orientasi dipilih otomatis", theme::BLUE);
                 }
@@ -131,7 +130,11 @@ impl CetakinApp {
             card_title(ui, theme::Icon::Photo, "Ukuran Foto");
             ui.add_space(10.0);
 
-            let mut mode = if self.settings.mode == SheetMode::Single { 0 } else { 1 };
+            let mut mode = if self.settings.mode == SheetMode::Single {
+                0
+            } else {
+                1
+            };
             theme::segmented(ui, &mut mode, &["Satuan", "Paket campuran"]);
             self.settings.mode = if mode == 0 {
                 SheetMode::Single
@@ -199,7 +202,11 @@ impl CetakinApp {
             ui.add_space(6.0);
 
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Jarak antar foto").size(12.0).color(theme::MUTED));
+                ui.label(
+                    RichText::new("Jarak antar foto")
+                        .size(12.0)
+                        .color(theme::MUTED),
+                );
             });
             ui.add(
                 egui::Slider::new(&mut self.settings.gap_mm, 0.0..=15.0)
@@ -215,8 +222,7 @@ impl CetakinApp {
                         .width(200.0)
                         .selected_text(self.settings.cut_style.label())
                         .show_ui(ui, |ui| {
-                            for style in [CutStyle::None, CutStyle::Frame, CutStyle::Guillotine]
-                            {
+                            for style in [CutStyle::None, CutStyle::Frame, CutStyle::Guillotine] {
                                 ui.selectable_value(
                                     &mut self.settings.cut_style,
                                     style,
@@ -385,7 +391,10 @@ impl CetakinApp {
         ui.add_space(9.0);
         let mut fill = self.settings.quantity == 0;
         if ui
-            .checkbox(&mut fill, RichText::new("Penuhi halaman otomatis").size(12.0))
+            .checkbox(
+                &mut fill,
+                RichText::new("Penuhi halaman otomatis").size(12.0),
+            )
             .changed()
         {
             self.settings.quantity = if fill { 0 } else { 4 };
@@ -491,11 +500,7 @@ impl CetakinApp {
                     });
                     ui.add_space(4.0);
                     ui.horizontal(|ui| {
-                        ui.label(
-                            RichText::new("Foto")
-                                .size(10.5)
-                                .color(theme::MUTED),
-                        );
+                        ui.label(RichText::new("Foto").size(10.5).color(theme::MUTED));
                         egui::ComboBox::from_id_salt(("packet-photo", i))
                             .width(ui.available_width() - 8.0)
                             .selected_text(
@@ -507,17 +512,9 @@ impl CetakinApp {
                             )
                             .show_ui(ui, |ui| {
                                 let item = &mut self.settings.packet[i];
-                                ui.selectable_value(
-                                    &mut item.photo,
-                                    None,
-                                    "Ikuti foto aktif",
-                                );
+                                ui.selectable_value(&mut item.photo, None, "Ikuti foto aktif");
                                 for (pi, name) in photo_names.iter().enumerate() {
-                                    ui.selectable_value(
-                                        &mut item.photo,
-                                        Some(pi),
-                                        name,
-                                    );
+                                    ui.selectable_value(&mut item.photo, Some(pi), name);
                                 }
                             });
                     });
@@ -546,11 +543,7 @@ impl CetakinApp {
             });
         });
         if layout.overflow > 0 {
-            theme::badge(
-                ui,
-                &format!("{} tidak muat", layout.overflow),
-                theme::RED,
-            );
+            theme::badge(ui, &format!("{} tidak muat", layout.overflow), theme::RED);
         }
     }
 
@@ -565,18 +558,6 @@ impl CetakinApp {
                         .strong()
                         .color(theme::TEXT),
                 );
-                theme::badge(
-                    ui,
-                    &format!("{:.0} × {:.0} cm", layout.page_w_mm / 10.0, layout.page_h_mm / 10.0),
-                    theme::BLUE,
-                );
-                if self.settings.batch_per_photo && self.page_count() > 1 {
-                    theme::badge(
-                        ui,
-                        &format!("Halaman {} / {}", self.active_photo + 1, self.page_count()),
-                        theme::YELLOW,
-                    );
-                }
 
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     if ui
@@ -623,8 +604,8 @@ impl CetakinApp {
             });
 
             ui.add_space(9.0);
-            let reserved = 190.0;
-            let canvas_h = (ui.available_height() - reserved).max(240.0);
+            let reserved = 286.0;
+            let canvas_h = (ui.available_height() - reserved).clamp(220.0, 560.0);
             let (rect, response) = ui.allocate_exact_size(
                 Vec2::new(ui.available_width(), canvas_h),
                 Sense::click_and_drag(),
@@ -668,8 +649,7 @@ impl CetakinApp {
             let scroll = ui.input(|i| i.smooth_scroll_delta.y);
             if scroll.abs() > 0.5 {
                 let old = self.preview_zoom;
-                self.preview_zoom =
-                    (self.preview_zoom * (1.0 + scroll * 0.0015)).clamp(0.6, 3.0);
+                self.preview_zoom = (self.preview_zoom * (1.0 + scroll * 0.0015)).clamp(0.6, 3.0);
                 if self.preview_zoom <= 1.0 {
                     self.preview_pan = Vec2::ZERO;
                 } else if old <= 1.0 {
@@ -703,7 +683,12 @@ impl CetakinApp {
         // Label ukuran & halaman di atas kertas.
         let label = format!(
             "{} · {:.1} × {:.1} cm",
-            self.settings.paper.label().split("  ").next().unwrap_or("Kertas"),
+            self.settings
+                .paper
+                .label()
+                .split("  ")
+                .next()
+                .unwrap_or("Kertas"),
             pw / 10.0,
             ph / 10.0
         );
@@ -732,12 +717,7 @@ impl CetakinApp {
             );
         }
 
-        let mm = |x: f32, y: f32| {
-            egui::pos2(
-                page.left() + x * scale,
-                page.top() + y * scale,
-            )
-        };
+        let mm = |x: f32, y: f32| egui::pos2(page.left() + x * scale, page.top() + y * scale);
 
         // Panduan margin yang bisa dicetak.
         let margins = self.settings.base_margins();
@@ -821,10 +801,7 @@ impl CetakinApp {
         }
 
         if self.photos.is_empty() {
-            let box_rect = egui::Rect::from_center_size(
-                page.center(),
-                Vec2::new(250.0, 94.0),
-            );
+            let box_rect = egui::Rect::from_center_size(page.center(), Vec2::new(250.0, 94.0));
             painter.rect_filled(
                 box_rect,
                 CornerRadius::same(12),
@@ -854,13 +831,16 @@ impl CetakinApp {
             .inner_margin(Margin::symmetric(12, 8))
             .show(ui, |ui| {
                 ui.horizontal_wrapped(|ui| {
-                    theme::badge(
+                    stat_text(
                         ui,
                         &format!("{} foto", layout.cells.len()),
                         theme::ACCENT,
+                        true,
                     );
-                    theme::badge(ui, &layout.margin_label(), theme::MUTED);
-                    theme::badge(
+                    stat_sep(ui);
+                    stat_text(ui, &layout.margin_label(), theme::MUTED, false);
+                    stat_sep(ui);
+                    stat_text(
                         ui,
                         &format!(
                             "Area {:.1} × {:.1} cm",
@@ -868,6 +848,7 @@ impl CetakinApp {
                             layout.used_h_mm / 10.0
                         ),
                         theme::MUTED,
+                        false,
                     );
                     if let Some(dpi) = self.min_dpi(layout) {
                         let (label, level) = image_utils::dpi_quality(dpi);
@@ -877,42 +858,33 @@ impl CetakinApp {
                             2 => theme::ORANGE,
                             _ => theme::RED,
                         };
-                        theme::badge(
-                            ui,
-                            &format!("{dpi:.0} DPI · {label}"),
-                            color,
-                        );
+                        stat_sep(ui);
+                        stat_text(ui, &format!("{dpi:.0} DPI · {label}"), color, false);
                     }
                     if layout.overflow > 0 {
-                        theme::badge(
+                        stat_sep(ui);
+                        stat_text(
                             ui,
                             &format!("{} tidak muat", layout.overflow),
                             theme::RED,
+                            false,
                         );
                     }
                     if self.settings.paper == PaperPreset::Custom {
-                        theme::badge(ui, "Kertas kustom", theme::BLUE);
+                        stat_sep(ui);
+                        stat_text(ui, "Kertas kustom", theme::BLUE, false);
                     }
                 });
                 if let Some(warning) = layout.warnings.first() {
                     ui.add_space(2.0);
-                    ui.label(
-                        RichText::new(warning)
-                            .size(10.5)
-                            .color(theme::ORANGE),
-                    );
+                    ui.label(RichText::new(warning).size(10.5).color(theme::ORANGE));
                 }
             });
     }
 
     fn photo_strip(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.label(
-                RichText::new("FOTO")
-                    .size(10.5)
-                    .strong()
-                    .color(theme::DIM),
-            );
+            ui.label(RichText::new("FOTO").size(10.5).strong().color(theme::DIM));
             theme::badge(ui, &format!("{}", self.photos.len()), theme::MUTED);
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 if theme::secondary_button(ui, "+ Impor").clicked() {
@@ -929,17 +901,12 @@ impl CetakinApp {
                         )
                         .clicked()
                     {
-                        self.active_photo =
-                            (self.active_photo + 1).min(self.photos.len() - 1);
+                        self.active_photo = (self.active_photo + 1).min(self.photos.len() - 1);
                     }
                     ui.label(
-                        RichText::new(format!(
-                            "{} / {}",
-                            self.active_photo + 1,
-                            self.photos.len()
-                        ))
-                        .size(11.0)
-                        .color(theme::MUTED),
+                        RichText::new(format!("{} / {}", self.active_photo + 1, self.photos.len()))
+                            .size(11.0)
+                            .color(theme::MUTED),
                     );
                     if ui
                         .add(
@@ -959,11 +926,7 @@ impl CetakinApp {
                 ui.allocate_exact_size(Vec2::new(ui.available_width(), 62.0), Sense::click());
             let painter = ui.painter();
             let stroke = Stroke::new(1.0, theme::BORDER);
-            crate::app::dashed_rect(
-                painter,
-                rect.shrink(1.0),
-                stroke,
-            );
+            crate::app::dashed_rect(painter, rect.shrink(1.0), stroke);
             painter.text(
                 rect.center(),
                 Align2::CENTER_CENTER,
@@ -1029,17 +992,14 @@ impl CetakinApp {
                                 rect.right_top() + Vec2::new(-20.0, 4.0),
                                 Vec2::splat(15.0),
                             );
-                            ui.painter().circle_filled(
-                                badge.center(),
-                                7.0,
-                                theme::ACCENT,
-                            );
-                            ui.painter().text(
-                                badge.center(),
-                                Align2::CENTER_CENTER,
-                                "✓",
-                                FontId::proportional(9.0),
+                            ui.painter()
+                                .circle_filled(badge.center(), 7.0, theme::ACCENT);
+                            theme::icon(
+                                ui.painter(),
+                                badge,
+                                theme::Icon::Check,
                                 Color32::BLACK,
+                                1.6,
                             );
                         }
                         let response = response.on_hover_text(format!(
@@ -1104,14 +1064,15 @@ impl CetakinApp {
         }
         let default_name = format!(
             "cetakin-{}-{}.pdf",
-            safe_slug(self.settings.paper.label().split("  ").next().unwrap_or("kertas")),
             safe_slug(
-                &self
-                    .settings
-                    .photo
-                    .short_label()
-                    .to_string()
-            )
+                self.settings
+                    .paper
+                    .label()
+                    .split("  ")
+                    .next()
+                    .unwrap_or("kertas")
+            ),
+            safe_slug(&self.settings.photo.short_label().to_string())
         );
         let mut dialog = rfd::FileDialog::new()
             .set_title("Simpan lembar foto sebagai PDF")
@@ -1152,13 +1113,7 @@ impl CetakinApp {
                 let ctx = ctx.clone();
                 move |p: f32, m: &str| ctx.progress(p, m)
             };
-            pdf_export::export_sheet_pdf(
-                &print_path,
-                &settings,
-                &layout,
-                &pages,
-                &mut cb,
-            )?;
+            pdf_export::export_sheet_pdf(&print_path, &settings, &layout, &pages, &mut cb)?;
             ctx.progress(0.96, "Mengirim ke printer…");
             let note = convert::print_pdf(&print_path, &tools)?;
             Ok(JobResult {
@@ -1195,14 +1150,30 @@ impl CetakinApp {
     }
 }
 
+fn stat_text(ui: &mut egui::Ui, text: &str, color: Color32, strong: bool) {
+    let mut rich = RichText::new(text).size(11.0).color(color);
+    if strong {
+        rich = rich.strong();
+    }
+    ui.label(rich);
+}
+
+fn stat_sep(ui: &mut egui::Ui) {
+    ui.label(RichText::new("·").size(11.0).color(theme::DIM));
+}
+
 fn preset_chip(ui: &mut egui::Ui, label: &str, selected: bool) -> bool {
     ui.add(
-        egui::Button::new(
-            RichText::new(label)
-                .size(11.5)
-                .color(if selected { Color32::BLACK } else { theme::TEXT }),
-        )
-        .fill(if selected { theme::ACCENT } else { theme::INPUT })
+        egui::Button::new(RichText::new(label).size(11.5).color(if selected {
+            Color32::BLACK
+        } else {
+            theme::TEXT
+        }))
+        .fill(if selected {
+            theme::ACCENT
+        } else {
+            theme::INPUT
+        })
         .stroke(if selected {
             Stroke::new(1.0, theme::ACCENT)
         } else {

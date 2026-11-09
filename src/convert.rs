@@ -7,9 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use lopdf::{dictionary, Document, Object};
 
 use crate::docx::{self, DocxPage, DocxPageImage};
-use crate::image_utils::{
-    self, format_bytes, load_image, save_image, SUPPORTED_IMAGE_EXTS,
-};
+use crate::image_utils::{load_image, save_image, SUPPORTED_IMAGE_EXTS};
 use crate::pdf_export;
 
 pub const PDF_EXTS: &[&str] = &["pdf"];
@@ -127,12 +125,8 @@ fn unique_work_dir(tag: &str) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
-    let dir = std::env::temp_dir().join(format!(
-        "cetakin-{}-{}-{}",
-        tag,
-        std::process::id(),
-        nanos
-    ));
+    let dir =
+        std::env::temp_dir().join(format!("cetakin-{}-{}-{}", tag, std::process::id(), nanos));
     let _ = fs::create_dir_all(&dir);
     dir
 }
@@ -224,8 +218,7 @@ pub fn pdf_to_images(
                 let _ = f;
             }
             // ImageMagick menulis semua halaman dengan pola nama.
-            cmd.arg(input)
-                .arg(work.join("halaman-%d.png"));
+            cmd.arg(input).arg(work.join("halaman-%d.png"));
             run_capture(cmd)?;
         } else {
             return Err(
@@ -275,10 +268,7 @@ fn unique_destination(path: PathBuf) -> PathBuf {
     if !path.exists() {
         return path;
     }
-    let stem = path
-        .file_stem()
-        .and_then(OsStr::to_str)
-        .unwrap_or("hasil");
+    let stem = path.file_stem().and_then(OsStr::to_str).unwrap_or("hasil");
     let ext = path
         .extension()
         .and_then(OsStr::to_str)
@@ -301,7 +291,11 @@ fn unique_destination(path: PathBuf) -> PathBuf {
 pub fn extract_pdf_pages_text(input: &Path, tools: &ToolStatus) -> Vec<String> {
     if let Some(pdftotext) = &tools.pdftotext {
         let mut cmd = command(pdftotext);
-        cmd.arg("-layout").arg("-enc").arg("UTF-8").arg(input).arg("-");
+        cmd.arg("-layout")
+            .arg("-enc")
+            .arg("UTF-8")
+            .arg(input)
+            .arg("-");
         if let Ok(text) = run_capture(cmd) {
             let pages: Vec<String> = text
                 .split('\u{000c}')
@@ -392,8 +386,7 @@ pub fn pdf_to_docx(
                     if i >= page_images.len() {
                         break;
                     }
-                    if let (Ok(bytes), Ok((w, h))) =
-                        (fs::read(file), image::image_dimensions(file))
+                    if let (Ok(bytes), Ok((w, h))) = (fs::read(file), image::image_dimensions(file))
                     {
                         page_images[i] = Some(DocxPageImage {
                             png_bytes: bytes,
@@ -481,10 +474,7 @@ pub fn docx_to_pdf(
     if ext == "docx" {
         progress(0.4, "LibreOffice tidak ada — memakai renderer teks…");
         let text = docx::extract_docx_text(input)?;
-        let pages: Vec<String> = text
-            .split('\u{000c}')
-            .map(|s| s.to_string())
-            .collect();
+        let pages: Vec<String> = text.split('\u{000c}').map(|s| s.to_string()).collect();
         let stem = input
             .file_stem()
             .and_then(OsStr::to_str)
@@ -498,8 +488,10 @@ pub fn docx_to_pdf(
         });
     }
 
-    Err("Konversi format ini membutuhkan LibreOffice. Pasang LibreOffice lalu coba lagi."
-        .to_string())
+    Err(
+        "Konversi format ini membutuhkan LibreOffice. Pasang LibreOffice lalu coba lagi."
+            .to_string(),
+    )
 }
 
 /// Gabungkan beberapa PDF menjadi satu.
@@ -514,8 +506,8 @@ pub fn merge_pdfs(
     let mut docs = Vec::new();
     for (i, input) in inputs.iter().enumerate() {
         progress(0.1 + 0.4 * i as f32 / inputs.len() as f32, "Membaca PDF…");
-        let doc = Document::load(input)
-            .map_err(|e| format!("Gagal membaca {}: {e}", input.display()))?;
+        let doc =
+            Document::load(input).map_err(|e| format!("Gagal membaca {}: {e}", input.display()))?;
         docs.push(doc);
     }
 
@@ -567,7 +559,11 @@ pub fn merge_pdfs(
     progress(1.0, "Selesai");
     Ok(ConvertOutcome {
         files: vec![output.to_path_buf()],
-        note: format!("{} halaman dari {} PDF digabung.", page_ids.len(), inputs.len()),
+        note: format!(
+            "{} halaman dari {} PDF digabung.",
+            page_ids.len(),
+            inputs.len()
+        ),
     })
 }
 
@@ -602,7 +598,13 @@ pub fn compress_images(
     for (i, input) in inputs.iter().enumerate() {
         progress(
             i as f32 / inputs.len().max(1) as f32,
-            &format!("Memproses {}", input.file_name().and_then(OsStr::to_str).unwrap_or("gambar")),
+            &format!(
+                "Memproses {}",
+                input
+                    .file_name()
+                    .and_then(OsStr::to_str)
+                    .unwrap_or("gambar")
+            ),
         );
         let mut img = load_image(input)?;
         if max_side_px > 0 {
@@ -615,21 +617,14 @@ pub fn compress_images(
             .file_stem()
             .and_then(OsStr::to_str)
             .unwrap_or("gambar");
-        let dest = unique_destination(output_dir.join(format!(
-            "{stem}-kompres.{}",
-            format.ext()
-        )));
+        let dest = unique_destination(output_dir.join(format!("{stem}-kompres.{}", format.ext())));
         save_image(&img, &dest, quality)?;
         files.push(dest);
     }
     progress(1.0, "Selesai");
     Ok(ConvertOutcome {
         files,
-        note: format!(
-            "{} gambar diproses. Kualitas {}%.",
-            inputs.len(),
-            quality
-        ),
+        note: format!("{} gambar diproses. Kualitas {}%.", inputs.len(), quality),
     })
 }
 

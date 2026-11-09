@@ -1,4 +1,6 @@
-use eframe::egui::{self, Color32, CornerRadius, FontId, Margin, RichText, Stroke, StrokeKind, Vec2};
+use eframe::egui::{
+    self, Color32, CornerRadius, FontId, Margin, RichText, Stroke, StrokeKind, Vec2,
+};
 
 pub const BG: Color32 = Color32::from_rgb(15, 16, 19);
 pub const SIDEBAR: Color32 = Color32::from_rgb(21, 22, 26);
@@ -90,26 +92,21 @@ pub fn apply(ctx: &egui::Context) {
         style.spacing.icon_width_inner = 10.0;
         style.spacing.icon_spacing = 7.0;
 
-        style.text_styles.insert(
-            egui::TextStyle::Body,
-            FontId::proportional(14.0),
-        );
-        style.text_styles.insert(
-            egui::TextStyle::Button,
-            FontId::proportional(14.0),
-        );
-        style.text_styles.insert(
-            egui::TextStyle::Small,
-            FontId::proportional(12.0),
-        );
-        style.text_styles.insert(
-            egui::TextStyle::Heading,
-            FontId::proportional(24.0),
-        );
-        style.text_styles.insert(
-            egui::TextStyle::Monospace,
-            FontId::monospace(13.0),
-        );
+        style
+            .text_styles
+            .insert(egui::TextStyle::Body, FontId::proportional(14.0));
+        style
+            .text_styles
+            .insert(egui::TextStyle::Button, FontId::proportional(14.0));
+        style
+            .text_styles
+            .insert(egui::TextStyle::Small, FontId::proportional(12.0));
+        style
+            .text_styles
+            .insert(egui::TextStyle::Heading, FontId::proportional(24.0));
+        style
+            .text_styles
+            .insert(egui::TextStyle::Monospace, FontId::monospace(13.0));
     });
 }
 
@@ -200,11 +197,11 @@ pub fn segmented(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
         for (i, label) in labels.iter().enumerate() {
             let active = *selected == i;
             let response = ui.add(
-                egui::Button::new(
-                    RichText::new(*label)
-                        .size(13.0)
-                        .color(if active { TEXT } else { MUTED }),
-                )
+                egui::Button::new(RichText::new(*label).size(13.0).color(if active {
+                    TEXT
+                } else {
+                    MUTED
+                }))
                 .fill(if active { CARD_HOVER } else { INPUT })
                 .stroke(if active {
                     Stroke::new(1.0, Color32::from_rgb(74, 79, 90))
@@ -219,6 +216,32 @@ pub fn segmented(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
             }
         }
     });
+}
+
+pub fn segmented_rtl(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
+    // Dipakai di dalam layout right-to-left: iterasi dibalik agar urutan
+    // visual tetap kiri-ke-kanan.
+    for (i, label) in labels.iter().enumerate().rev() {
+        let active = *selected == i;
+        let response = ui.add(
+            egui::Button::new(RichText::new(*label).size(13.0).color(if active {
+                TEXT
+            } else {
+                MUTED
+            }))
+            .fill(if active { CARD_HOVER } else { INPUT })
+            .stroke(if active {
+                Stroke::new(1.0, Color32::from_rgb(74, 79, 90))
+            } else {
+                Stroke::new(1.0, BORDER_SOFT)
+            })
+            .corner_radius(CornerRadius::same(9))
+            .min_size(Vec2::new(0.0, 30.0)),
+        );
+        if response.clicked() {
+            *selected = i;
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -237,6 +260,8 @@ pub enum Icon {
     Add,
     Trash,
     Check,
+    Up,
+    Down,
     Warning,
     Page,
     Close,
@@ -341,6 +366,16 @@ pub fn icon(painter: &egui::Painter, rect: egui::Rect, kind: Icon, color: Color3
         Icon::Check => {
             painter.line_segment([p(0.12, 0.52), p(0.4, 0.82)], s);
             painter.line_segment([p(0.4, 0.82), p(0.9, 0.2)], s);
+        }
+        Icon::Up => {
+            painter.line_segment([p(0.5, 0.88), p(0.5, 0.14)], s);
+            painter.line_segment([p(0.5, 0.14), p(0.22, 0.42)], s);
+            painter.line_segment([p(0.5, 0.14), p(0.78, 0.42)], s);
+        }
+        Icon::Down => {
+            painter.line_segment([p(0.5, 0.12), p(0.5, 0.86)], s);
+            painter.line_segment([p(0.5, 0.86), p(0.22, 0.58)], s);
+            painter.line_segment([p(0.5, 0.86), p(0.78, 0.58)], s);
         }
         Icon::Warning => {
             painter.line_segment([p(0.5, 0.08), p(0.94, 0.88)], s);

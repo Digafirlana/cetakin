@@ -2,14 +2,13 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
-use image::{DynamicImage, GenericImageView, ImageOutputFormat, Rgba, RgbaImage};
 use exif::{In, Reader as ExifReader, Tag};
+use image::{DynamicImage, GenericImageView, ImageOutputFormat, Rgba, RgbaImage};
 
 use crate::model::ImageFit;
 
-pub const SUPPORTED_IMAGE_EXTS: &[&str] = &[
-    "jpg", "jpeg", "png", "webp", "bmp", "gif", "tif", "tiff",
-];
+pub const SUPPORTED_IMAGE_EXTS: &[&str] =
+    &["jpg", "jpeg", "png", "webp", "bmp", "gif", "tif", "tiff"];
 
 pub fn is_supported_image(path: &Path) -> bool {
     path.extension()
@@ -59,8 +58,7 @@ fn apply_orientation(img: DynamicImage, orientation: u32) -> DynamicImage {
 
 /// Membuka gambar dan menerapkan rotasi EXIF (foto HP).
 pub fn load_image(path: &Path) -> Result<DynamicImage, String> {
-    let img = image::open(path)
-        .map_err(|e| format!("Gagal membaca {}: {e}", path.display()))?;
+    let img = image::open(path).map_err(|e| format!("Gagal membaca {}: {e}", path.display()))?;
     let orientation = exif_orientation(path);
     Ok(apply_orientation(img, orientation))
 }
@@ -135,13 +133,7 @@ pub fn prepare_for_cell(
 }
 
 /// Perkiraan DPI efektif bila foto dicetak pada ukuran sel tertentu.
-pub fn estimate_dpi(
-    img_w: u32,
-    img_h: u32,
-    cell_w_mm: f32,
-    cell_h_mm: f32,
-    fit: ImageFit,
-) -> f32 {
+pub fn estimate_dpi(img_w: u32, img_h: u32, cell_w_mm: f32, cell_h_mm: f32, fit: ImageFit) -> f32 {
     if img_w == 0 || img_h == 0 || cell_w_mm <= 0.0 || cell_h_mm <= 0.0 {
         return 0.0;
     }
