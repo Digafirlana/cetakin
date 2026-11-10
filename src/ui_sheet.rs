@@ -741,8 +741,8 @@ impl CetakinApp {
                 mm(cell.x_mm + cell.w_mm, cell.y_mm + cell.h_mm),
             )
             .shrink(0.4);
-            let path = slots.get(i).and_then(|p| p.as_ref());
-            let texture = path.and_then(|p| self.texture_for(&ctx, p));
+            let photo = slots.get(i).and_then(|p| p.as_ref());
+            let texture = photo.and_then(|p| self.texture_for_rotated(&ctx, &p.path, p.rotation));
             match texture {
                 Some(tex) => {
                     crate::app::paint_photo(&painter, target, &tex, self.settings.fit);
@@ -940,10 +940,42 @@ impl CetakinApp {
             return;
         }
 
-        let items: Vec<(PathBuf, String, u32, u32, u64)> = self
+        ui.add_space(6.0);
+        let current_rotation = self.active_rotation();
+        let mut rotate_by = 0;
+        ui.horizontal(|ui| {
+            ui.label(
+                RichText::new("Rotasi foto aktif")
+                    .size(10.5)
+                    .color(theme::MUTED),
+            );
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                if compact_button(ui, "+90°") {
+                    rotate_by = 90;
+                }
+                if compact_button(ui, "-90°") {
+                    rotate_by = -90;
+                }
+                theme::badge(ui, &format!("{current_rotation}°"), theme::MUTED);
+            });
+        });
+        if rotate_by != 0 {
+            self.rotate_active(rotate_by);
+        }
+
+        let items: Vec<(PathBuf, String, u32, u32, u64, u16)> = self
             .photos
             .iter()
-            .map(|p| (p.path.clone(), p.name(), p.dims.0, p.dims.1, p.bytes))
+            .map(|p| {
+                (
+                    p.path.clone(),
+                    p.name(),
+                    p.dims.0,
+                    p.dims.1,
+                    p.bytes,
+                    p.rotation,
+                )
+            })
             .collect();
         let mut select = None;
         let mut remove = None;
@@ -954,8 +986,8 @@ impl CetakinApp {
             .auto_shrink([false, true])
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    for (i, (path, name, w, h, bytes)) in items.iter().enumerate() {
-                        let tex = self.texture_for(ui.ctx(), path);
+                    for (i, (path, name, w, h, bytes, rotation)) in items.iter().enumerate() {
+                        let tex = self.texture_for_rotated(ui.ctx(), path, *rotation);
                         let (rect, response) =
                             ui.allocate_exact_size(Vec2::splat(76.0), Sense::click());
                         let active = i == self.active_photo;
@@ -1002,10 +1034,32 @@ impl CetakinApp {
                                 1.6,
                             );
                         }
-                        let response = response.on_hover_text(format!(
+                        if *rotation != 0 {
+                            let badge = egui::Rect::from_min_size(
+                                rect.left_bottom() + Vec2::new(4.0, -20.0),
+                                Vec2::new(34.0, 16.0),
+                            );
+                            ui.painter().rect_filled(
+                                badge,
+                                CornerRadius::same(4),
+                                Color32::from_rgba_unmultiplied(0, 0, 0, 175),
+                            );
+                            ui.painter().text(
+                                badge.center(),
+                                Align2::CENTER_CENTER,
+                                format!("{rotation}°"),
+                                FontId::proportional(9.5),
+                                Color32::WHITE,
+                            );
+                        }
+                        let mut tooltip = format!(
                             "{name}\n{w} × {h} px · {}\nKlik untuk memilih · klik kanan untuk menghapus",
                             crate::image_utils::format_bytes(*bytes)
-                        ));
+                        );
+                        if *rotation != 0 {
+                            tooltip.push_str(&format!("\nRotasi {}°", rotation));
+                        }
+                        let response = response.on_hover_text(tooltip);
                         if response.clicked() {
                             select = Some(i);
                         }
@@ -1160,6 +1214,17 @@ fn stat_text(ui: &mut egui::Ui, text: &str, color: Color32, strong: bool) {
 
 fn stat_sep(ui: &mut egui::Ui) {
     ui.label(RichText::new("·").size(11.0).color(theme::DIM));
+}
+
+fn compact_button(ui: &mut egui::Ui, label: &str) -> bool {
+    ui.add(
+        egui::Button::new(RichText::new(label).size(11.0).color(theme::TEXT))
+            .fill(theme::INPUT)
+            .stroke(Stroke::new(1.0, theme::BORDER))
+            .corner_radius(CornerRadius::same(8))
+            .min_size(Vec2::new(0.0, 26.0)),
+    )
+    .clicked()
 }
 
 fn preset_chip(ui: &mut egui::Ui, label: &str, selected: bool) -> bool {

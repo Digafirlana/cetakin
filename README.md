@@ -15,6 +15,7 @@ Dibuat dengan **Rust + eframe/egui** (renderer glow/OpenGL). Berjalan di **Windo
 - Orientasi potret, mendatar, atau otomatis.
 - Margin gaya Word: **Normal, Sempit, Sedang, Lebar, Tanpa, Kustom** + pusatkan grid otomatis.
 - Jarak antar foto, garis potong (bingkai / guillotine), footer nama studio.
+- Rotasi per foto 0°/90°/180°/270°; pratinjau dan PDF mengikuti.
 - Pratinjau halaman real-time dengan zoom, pan, dan panduan margin.
 - Batch **satu halaman per foto** untuk mencetak banyak pelanggan sekaligus.
 - Ekspor PDF 150/300/600 DPI dengan gambar ter-crop sesuai bingkai.
@@ -36,7 +37,12 @@ Dibuat dengan **Rust + eframe/egui** (renderer glow/OpenGL). Berjalan di **Windo
 - **Daftar printer** dan cetak PDF terakhir.
 - **Status komponen pendukung** (LibreOffice, Poppler, MuPDF, ImageMagick, CUPS).
 
-### 4. Pengaturan
+### 4. Antarmuka
+- **Dynamic Island** di tengah atas: progress job serta toast sukses/error/info.
+- Ringkas saat berjalan, membesar saat hover/klik; error tetap terbuka sampai ditutup.
+- Animasi buka/tutup halus tanpa dependency tambahan.
+
+### 5. Pengaturan
 - Nama studio dan footer.
 - Bawaan kertas, orientasi, ukuran foto, margin, DPI, auto-center, batch.
 - Simpan/reset preferensi, lokasi file konfigurasi, hasil terakhir.
@@ -87,6 +93,19 @@ Untuk build yang lebih cepat di laptop/PC ringan:
 
 ```bash
 CARGO_BUILD_JOBS=1 cargo build --release
+```
+
+### Ukuran binary
+
+Profil `dev` tidak menyertakan debug info, sehingga `cargo run` menghasilkan
+binary sekitar **25 MB** (sebelumnya ~380 MB). Profil `release` juga sudah
+memakai `strip`, jadi binary distribusi jauh lebih kecil lagi.
+
+Jika butuh backtrace dengan nomor baris saat debugging, jalankan sekali dengan
+debug info tanpa mengubah pengaturan permanen:
+
+```bash
+CARGO_PROFILE_DEV_DEBUG=2 CARGO_PROFILE_DEV_STRIP=none cargo run
 ```
 
 ---

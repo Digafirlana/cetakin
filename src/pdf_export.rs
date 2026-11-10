@@ -10,9 +10,9 @@ use printpdf::{
     PdfLayerReference, Point, Rgb,
 };
 
-use crate::image_utils::{load_image, prepare_for_cell};
+use crate::image_utils::{load_image, prepare_for_cell, prepare_for_cell_rotated};
 use crate::layout::{cut_segments, SheetLayout};
-use crate::model::{cut_style_uses_guides, ImageFit, PageOrientation, SheetSettings};
+use crate::model::{cut_style_uses_guides, ImageFit, PageOrientation, PhotoRef, SheetSettings};
 
 type Progress<'a> = dyn FnMut(f32, &str) + 'a;
 
@@ -100,10 +100,10 @@ fn render_sheet_page(
     page_idx: printpdf::PdfPageIndex,
     layer_idx: printpdf::PdfLayerIndex,
     layout: &SheetLayout,
-    photos: &[Option<PathBuf>],
+    photos: &[Option<PhotoRef>],
     settings: &SheetSettings,
     image_cache: &mut HashMap<PathBuf, Rc<DynamicImage>>,
-    prepared_cache: &mut HashMap<(PathBuf, i32, i32, u8), Rc<DynamicImage>>,
+    prepared_cache: &mut HashMap<(PathBuf, i32, i32, u8, u16), Rc<DynamicImage>>,
     footer_font: Option<&printpdf::IndirectFontRef>,
 ) -> Result<(), String> {
     let layer = doc.get_page(page_idx).get_layer(layer_idx);
@@ -112,7 +112,7 @@ fn render_sheet_page(
 
     for (idx, cell) in layout.cells.iter().enumerate() {
         let photo = photos.get(idx).and_then(|p| p.as_ref());
-        let Some(path) = photo else {
+        let Some(photo) = photo else {
             draw_missing_photo(
                 &layer,
                 cell.x_mm,
@@ -123,12 +123,15 @@ fn render_sheet_page(
             );
             continue;
         };
+        let path = &photo.path;
+        let rotation = photo.rotation % 360;
 
         let key = (
             path.clone(),
             (cell.w_mm * 10.0).round() as i32,
             (cell.h_mm * 10.0).round() as i32,
             if fit == ImageFit::Cover { 0 } else { 1 },
+            rotation,
         );
         let prepared = if let Some(img) = prepared_cache.get(&key) {
             img.clone()
@@ -140,7 +143,9 @@ fn render_sheet_page(
                 image_cache.insert(path.clone(), img.clone());
                 img
             };
-            let img = Rc::new(prepare_for_cell(&source, cell.w_mm, cell.h_mm, dpi, fit));
+            let img = Rc::new(prepare_for_cell_rotated(
+                &source, cell.w_mm, cell.h_mm, dpi, fit, rotation,
+            ));
             prepared_cache.insert(key, img.clone());
             img
         };
@@ -173,7 +178,7 @@ pub fn export_sheet_pdf(
     output: &Path,
     settings: &SheetSettings,
     layout: &SheetLayout,
-    pages: &[Vec<Option<PathBuf>>],
+    pages: &[Vec<Option<PhotoRef>>],
     progress: &mut Progress<'_>,
 ) -> Result<(), String> {
     if pages.is_empty() {
@@ -185,7 +190,8 @@ pub fn export_sheet_pdf(
         PdfDocument::new("Cetakin - Lembar Foto", Mm(pw), Mm(ph), "Foto");
 
     let mut image_cache: HashMap<PathBuf, Rc<DynamicImage>> = HashMap::new();
-    let mut prepared_cache: HashMap<(PathBuf, i32, i32, u8), Rc<DynamicImage>> = HashMap::new();
+    let mut prepared_cache: HashMap<(PathBuf, i32, i32, u8, u16), Rc<DynamicImage>> =
+        HashMap::new();
     let footer_font = if settings.footer_enabled && !settings.footer.trim().is_empty() {
         doc.add_builtin_font(BuiltinFont::Helvetica).ok()
     } else {
@@ -457,7 +463,7 @@ mod tests {
         settings.dpi = 150;
         let layout = crate::layout::compute(&settings);
         assert!(!layout.cells.is_empty());
-        let pages = vec![vec![Some(photo); layout.cells.len()]];
+        let pages = vec![vec![Some(PhotoRef::new(photo, 90)); layout.cells.len()]];
 
         let output = dir.join("lembar.pdf");
         export_sheet_pdf(&output, &settings, &layout, &pages, &mut |_, _| {}).unwrap();

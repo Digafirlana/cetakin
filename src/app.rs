@@ -4,15 +4,15 @@ use std::sync::mpsc::{channel, Receiver, Sender, TryRecvError};
 use std::time::{Duration, Instant};
 
 use eframe::egui::{
-    self, Align, Align2, Color32, CornerRadius, FontId, Id, Layout, Margin, Order, RichText,
-    Stroke, Vec2,
+    self, Align, Align2, Color32, CornerRadius, FontId, Id, Layout, Margin, Order, RichText, Sense,
+    Stroke, StrokeKind, Vec2,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::convert::ToolStatus;
 use crate::image_utils;
 use crate::layout::SheetLayout;
-use crate::model::{ImageFit, SheetMode, SheetSettings};
+use crate::model::{normalize_rotation, ImageFit, PhotoRef, SheetMode, SheetSettings};
 use crate::theme;
 use crate::ui_convert::ConvertState;
 
@@ -53,6 +53,8 @@ pub struct PhotoItem {
     pub path: PathBuf,
     pub dims: (u32, u32),
     pub bytes: u64,
+    /// Rotasi searah jarum jam dalam derajat: 0, 90, 180, atau 270.
+    pub rotation: u16,
 }
 
 impl PhotoItem {
@@ -62,6 +64,27 @@ impl PhotoItem {
             .and_then(|n| n.to_str())
             .unwrap_or("foto")
             .to_string()
+    }
+
+    pub fn photo_ref(&self) -> PhotoRef {
+        PhotoRef::new(self.path.clone(), self.rotation)
+    }
+
+    pub fn set_rotation(&mut self, degrees: i32) {
+        self.rotation = normalize_rotation(degrees);
+    }
+
+    pub fn rotate_by(&mut self, delta: i32) {
+        self.set_rotation(self.rotation as i32 + delta);
+    }
+
+    /// Dimensi setelah rotasi pengguna (90°/270° menukar lebar & tinggi).
+    pub fn oriented_dims(&self) -> (u32, u32) {
+        if self.rotation % 180 == 0 {
+            self.dims
+        } else {
+            (self.dims.1, self.dims.0)
+        }
     }
 }
 
@@ -127,6 +150,42 @@ pub struct Toast {
     created: Instant,
 }
 
+/// Isi Dynamic Island: job yang sedang berjalan lebih diprioritaskan
+/// daripada toast notifikasi.
+enum IslandContent {
+    Job {
+        label: String,
+        message: String,
+        progress: f32,
+    },
+    Toast {
+        title: String,
+        detail: String,
+        kind: ToastKind,
+        auto_open: bool,
+    },
+}
+
+impl IslandContent {
+    fn from_app(app: &CetakinApp) -> Option<Self> {
+        if let Some(job) = &app.job {
+            return Some(Self::Job {
+                label: job.label.clone(),
+                message: job.message.clone(),
+                progress: job.progress,
+            });
+        }
+        let toast = app.toast.as_ref()?;
+        Some(Self::Toast {
+            title: toast.title.clone(),
+            detail: toast.detail.clone(),
+            kind: toast.kind,
+            auto_open: toast.kind != ToastKind::Error
+                && toast.created.elapsed() < Duration::from_secs(4),
+        })
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Preferences
 // ---------------------------------------------------------------------------
@@ -148,7 +207,7 @@ pub struct CetakinApp {
     pub settings: SheetSettings,
     pub photos: Vec<PhotoItem>,
     pub active_photo: usize,
-    pub textures: HashMap<PathBuf, egui::TextureHandle>,
+    pub textures: HashMap<(PathBuf, u16), egui::TextureHandle>,
     pub texture_errors: HashSet<PathBuf>,
     pub preview_zoom: f32,
     pub preview_pan: Vec2,
@@ -157,6 +216,8 @@ pub struct CetakinApp {
     pub tools: ToolStatus,
     pub job: Option<Job>,
     pub toast: Option<Toast>,
+    pub island_pinned: bool,
+    pub island_hovered: bool,
     pub prefs_path: PathBuf,
     pub studio: String,
     pub printers: Vec<String>,
@@ -193,6 +254,8 @@ impl CetakinApp {
             tools: ToolStatus::detect(),
             job: None,
             toast: None,
+            island_pinned: false,
+            island_hovered: false,
             prefs_path,
             studio,
             printers: Vec::new(),
@@ -230,7 +293,12 @@ impl CetakinApp {
             match image_utils::oriented_dimensions(&path) {
                 Ok(dims) => {
                     let bytes = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
-                    self.photos.push(PhotoItem { path, dims, bytes });
+                    self.photos.push(PhotoItem {
+                        path,
+                        dims,
+                        bytes,
+                        rotation: 0,
+                    });
                 }
                 Err(e) => {
                     failed.push(PathBuf::from(e));
@@ -262,7 +330,7 @@ impl CetakinApp {
     pub fn remove_photo(&mut self, index: usize) {
         if index < self.photos.len() {
             let removed = self.photos.remove(index);
-            self.textures.remove(&removed.path);
+            self.textures.retain(|(path, _), _| path != &removed.path);
             if self.active_photo >= self.photos.len() {
                 self.active_photo = self.photos.len().saturating_sub(1);
             }
@@ -285,12 +353,36 @@ impl CetakinApp {
         self.photos.get(self.active_photo).map(|p| p.path.clone())
     }
 
-    pub fn photo_dims(&self, path: &Path) -> Option<(u32, u32)> {
-        self.photos.iter().find(|p| p.path == path).map(|p| p.dims)
+    pub fn active_ref(&self) -> Option<PhotoRef> {
+        self.photos.get(self.active_photo).map(PhotoItem::photo_ref)
+    }
+
+    pub fn active_rotation(&self) -> u16 {
+        self.photos
+            .get(self.active_photo)
+            .map(|p| p.rotation)
+            .unwrap_or(0)
+    }
+
+    pub fn rotate_active(&mut self, delta: i32) {
+        if let Some(photo) = self.photos.get_mut(self.active_photo) {
+            photo.rotate_by(delta);
+        }
     }
 
     pub fn texture_for(&mut self, ctx: &egui::Context, path: &Path) -> Option<egui::TextureHandle> {
-        if let Some(tex) = self.textures.get(path) {
+        self.texture_for_rotated(ctx, path, 0)
+    }
+
+    pub fn texture_for_rotated(
+        &mut self,
+        ctx: &egui::Context,
+        path: &Path,
+        rotation: u16,
+    ) -> Option<egui::TextureHandle> {
+        let rotation = rotation % 360;
+        let key = (path.to_path_buf(), rotation);
+        if let Some(tex) = self.textures.get(&key) {
             return Some(tex.clone());
         }
         if self.texture_errors.contains(path) {
@@ -298,11 +390,15 @@ impl CetakinApp {
         }
         match image_utils::thumbnail(path, 480) {
             Ok(img) => {
+                let img = image_utils::rotate_rgba(img, rotation);
                 let size = [img.width() as usize, img.height() as usize];
                 let color = egui::ColorImage::from_rgba_unmultiplied(size, img.as_raw());
-                let tex =
-                    ctx.load_texture(path.to_string_lossy(), color, egui::TextureOptions::LINEAR);
-                self.textures.insert(path.to_path_buf(), tex.clone());
+                let tex = ctx.load_texture(
+                    format!("{}@{}", path.to_string_lossy(), rotation),
+                    color,
+                    egui::TextureOptions::LINEAR,
+                );
+                self.textures.insert(key, tex.clone());
                 Some(tex)
             }
             Err(e) => {
@@ -314,10 +410,10 @@ impl CetakinApp {
     }
 
     /// Foto untuk setiap sel pada halaman yang sedang dipratinjau.
-    pub fn preview_slots(&self, layout: &SheetLayout) -> Vec<Option<PathBuf>> {
+    pub fn preview_slots(&self, layout: &SheetLayout) -> Vec<Option<PhotoRef>> {
         match self.settings.mode {
             SheetMode::Single => {
-                let active = self.active_path();
+                let active = self.active_ref();
                 vec![active; layout.cells.len()]
             }
             SheetMode::Packet => layout
@@ -331,14 +427,15 @@ impl CetakinApp {
                             Some(self.active_photo.min(self.photos.len() - 1))
                         }
                     });
-                    idx.and_then(|i| self.photos.get(i)).map(|p| p.path.clone())
+                    idx.and_then(|i| self.photos.get(i))
+                        .map(PhotoItem::photo_ref)
                 })
                 .collect(),
         }
     }
 
     /// Semua halaman untuk ekspor PDF.
-    pub fn build_pages(&self, layout: &SheetLayout) -> Vec<Vec<Option<PathBuf>>> {
+    pub fn build_pages(&self, layout: &SheetLayout) -> Vec<Vec<Option<PhotoRef>>> {
         if layout.cells.is_empty() {
             return vec![Vec::new()];
         }
@@ -347,15 +444,15 @@ impl CetakinApp {
                 if self.settings.batch_per_photo && !self.photos.is_empty() {
                     self.photos
                         .iter()
-                        .map(|p| vec![Some(p.path.clone()); layout.cells.len()])
+                        .map(|p| vec![Some(p.photo_ref()); layout.cells.len()])
                         .collect()
                 } else {
-                    let active = self.active_path();
+                    let active = self.active_ref();
                     vec![vec![active; layout.cells.len()]]
                 }
             }
             SheetMode::Packet => {
-                let slots: Vec<Option<PathBuf>> = layout
+                let slots: Vec<Option<PhotoRef>> = layout
                     .cells
                     .iter()
                     .map(|cell| {
@@ -366,7 +463,8 @@ impl CetakinApp {
                                 Some(self.active_photo.min(self.photos.len() - 1))
                             }
                         });
-                        idx.and_then(|i| self.photos.get(i)).map(|p| p.path.clone())
+                        idx.and_then(|i| self.photos.get(i))
+                            .map(PhotoItem::photo_ref)
                     })
                     .collect();
                 vec![slots]
@@ -390,10 +488,14 @@ impl CetakinApp {
         slots
             .iter()
             .enumerate()
-            .filter_map(|(i, path)| {
-                let path = path.as_ref()?;
+            .filter_map(|(i, photo)| {
+                let photo = photo.as_ref()?;
                 let cell = layout.cells.get(i)?;
-                let (w, h) = self.photo_dims(path)?;
+                let (w, h) = self
+                    .photos
+                    .iter()
+                    .find(|p| p.path == photo.path)
+                    .map(PhotoItem::oriented_dims)?;
                 Some(image_utils::estimate_dpi(
                     w,
                     h,
@@ -432,6 +534,8 @@ impl CetakinApp {
             progress: 0.0,
             message: "Memulai…".to_string(),
         });
+        self.island_pinned = false;
+        self.island_hovered = false;
     }
 
     fn poll_job(&mut self, ctx: &egui::Context) {
@@ -486,6 +590,7 @@ impl CetakinApp {
             kind: ToastKind::Success,
             created: Instant::now(),
         });
+        self.island_pinned = false;
     }
 
     pub fn toast_error(&mut self, title: &str, detail: &str) {
@@ -495,6 +600,7 @@ impl CetakinApp {
             kind: ToastKind::Error,
             created: Instant::now(),
         });
+        self.island_pinned = false;
     }
 
     pub fn toast_info(&mut self, title: &str, detail: &str) {
@@ -504,6 +610,7 @@ impl CetakinApp {
             kind: ToastKind::Info,
             created: Instant::now(),
         });
+        self.island_pinned = false;
     }
 
     // -------------------------------------------------------------- prefs
@@ -848,90 +955,194 @@ impl CetakinApp {
         }
     }
 
-    fn toast_ui(&mut self, ctx: &egui::Context) {
-        let Some(toast) = &self.toast else {
-            return;
-        };
-        if toast.created.elapsed() > Duration::from_secs(6) {
-            self.toast = None;
-            return;
+    fn island_ui(&mut self, ctx: &egui::Context) {
+        if let Some(toast) = &self.toast {
+            let expired = toast.kind != ToastKind::Error
+                && toast.created.elapsed() > Duration::from_secs(6)
+                && !self.island_hovered
+                && !self.island_pinned;
+            if expired {
+                self.toast = None;
+            }
         }
-        let color = match toast.kind {
-            ToastKind::Success => theme::ACCENT,
-            ToastKind::Error => theme::RED,
-            ToastKind::Info => theme::BLUE,
-        };
-        let title = toast.title.clone();
-        let detail = toast.detail.clone();
-        egui::Area::new(Id::unique("cetakin-toast"))
-            .anchor(Align2::RIGHT_BOTTOM, [-24.0, -24.0])
-            .order(Order::Foreground)
-            .show(ctx, |ui| {
-                egui::Frame::new()
-                    .fill(theme::CARD)
-                    .corner_radius(CornerRadius::same(14))
-                    .stroke(Stroke::new(1.0, color))
-                    .shadow(egui::epaint::Shadow {
-                        offset: [0, 10],
-                        blur: 24,
-                        spread: 0,
-                        color: Color32::from_black_alpha(160),
-                    })
-                    .inner_margin(Margin::same(14))
-                    .show(ui, |ui| {
-                        ui.set_max_width(340.0);
-                        ui.horizontal(|ui| {
-                            theme::dot(ui, color);
-                            ui.label(RichText::new(&title).size(13.0).strong().color(theme::TEXT));
-                        });
-                        if !detail.is_empty() {
-                            ui.add_space(3.0);
-                            ui.label(RichText::new(&detail).size(11.5).color(theme::MUTED));
-                        }
-                    });
-            });
-        ctx.request_repaint_after(Duration::from_millis(250));
-    }
 
-    fn job_ui(&mut self, ctx: &egui::Context) {
-        let Some(job) = &self.job else {
+        let Some(content) = IslandContent::from_app(self) else {
+            self.island_hovered = false;
+            self.island_pinned = false;
             return;
         };
-        let label = job.label.clone();
-        let progress = job.progress;
-        let message = job.message.clone();
-        let has_toast = self.toast.is_some();
-        let offset = if has_toast {
-            Vec2::new(-24.0, -112.0)
-        } else {
-            Vec2::new(-24.0, -24.0)
+
+        let (accent, compact_width, expanded_height, force_open) = match &content {
+            IslandContent::Job { .. } => (theme::ACCENT, 262.0, 124.0, false),
+            IslandContent::Toast { kind, .. } => {
+                let color = match kind {
+                    ToastKind::Success => theme::ACCENT,
+                    ToastKind::Error => theme::RED,
+                    ToastKind::Info => theme::BLUE,
+                };
+                let force_open = *kind == ToastKind::Error;
+                (
+                    color,
+                    250.0,
+                    if force_open { 122.0 } else { 112.0 },
+                    force_open,
+                )
+            }
         };
-        egui::Area::new(Id::unique("cetakin-job"))
-            .anchor(Align2::RIGHT_BOTTOM, offset)
+        let auto_open = match &content {
+            IslandContent::Toast { auto_open, .. } => *auto_open,
+            IslandContent::Job { .. } => false,
+        };
+        let open_target = self.island_pinned || self.island_hovered || force_open || auto_open;
+        let t = ctx.animate_bool_with_time(Id::unique("cetakin-island-open"), open_target, 0.22);
+        let width = compact_width + (400.0 - compact_width) * t;
+        let height = 42.0 + (expanded_height - 42.0) * t;
+        let radius = 18.0 + 6.0 * t;
+
+        egui::Area::new(Id::unique("cetakin-island"))
+            .anchor(Align2::CENTER_TOP, [0.0, 10.0])
             .order(Order::Foreground)
+            .interactable(true)
             .show(ctx, |ui| {
-                egui::Frame::new()
-                    .fill(theme::CARD)
-                    .corner_radius(CornerRadius::same(14))
-                    .stroke(Stroke::new(1.0, theme::BORDER))
-                    .inner_margin(Margin::same(14))
-                    .show(ui, |ui| {
-                        ui.set_width(330.0);
-                        ui.horizontal(|ui| {
+                let (rect, response) =
+                    ui.allocate_exact_size(egui::vec2(width, height), Sense::click());
+                let corner = CornerRadius::same(radius.round() as u8);
+                ui.painter().add(
+                    egui::epaint::Shadow {
+                        offset: [0, 10],
+                        blur: (20.0 + 16.0 * t) as u8,
+                        spread: 0,
+                        color: Color32::from_black_alpha((120.0 + 70.0 * t) as u8),
+                    }
+                    .as_shape(rect, corner),
+                );
+                let border = if matches!(
+                    &content,
+                    IslandContent::Toast {
+                        kind: ToastKind::Error,
+                        ..
+                    }
+                ) {
+                    theme::RED
+                } else if t > 0.5 {
+                    accent
+                } else {
+                    theme::BORDER
+                };
+                ui.painter().rect(
+                    rect,
+                    corner,
+                    Color32::from_rgb(23, 25, 29),
+                    Stroke::new(1.0, border),
+                    StrokeKind::Inside,
+                );
+
+                let inner = rect.shrink2(egui::vec2(14.0 + 2.0 * t, 9.0 + 3.0 * t));
+                let mut child = ui.new_child(
+                    egui::UiBuilder::new()
+                        .max_rect(inner)
+                        .layout(Layout::top_down(Align::Min)),
+                );
+                child.set_clip_rect(inner);
+
+                match &content {
+                    IslandContent::Job {
+                        label,
+                        message,
+                        progress,
+                    } => {
+                        child.horizontal(|ui| {
                             ui.spinner();
-                            ui.label(RichText::new(&label).size(13.0).strong().color(theme::TEXT));
+                            let text = if t < 0.62 {
+                                format!("{label} · {:.0}%", progress * 100.0)
+                            } else {
+                                label.clone()
+                            };
+                            ui.add(
+                                egui::Label::new(
+                                    RichText::new(text).size(13.0).strong().color(theme::TEXT),
+                                )
+                                .truncate(),
+                            );
                         });
-                        ui.add_space(8.0);
-                        ui.add(
-                            egui::ProgressBar::new(progress)
-                                .fill(theme::ACCENT)
-                                .show_percentage(),
-                        );
-                        ui.add_space(2.0);
-                        ui.label(RichText::new(&message).size(11.0).color(theme::MUTED));
-                    });
+                        if t > 0.62 {
+                            child.add_space(7.0 * t);
+                            child.add(
+                                egui::ProgressBar::new(*progress)
+                                    .fill(theme::ACCENT)
+                                    .desired_height(8.0),
+                            );
+                            child.add_space(3.0);
+                            child.add(
+                                egui::Label::new(
+                                    RichText::new(message).size(11.0).color(theme::MUTED),
+                                )
+                                .wrap(),
+                            );
+                        }
+                    }
+                    IslandContent::Toast {
+                        title,
+                        detail,
+                        kind,
+                        ..
+                    } => {
+                        child.horizontal(|ui| {
+                            theme::dot(ui, accent);
+                            ui.add(
+                                egui::Label::new(
+                                    RichText::new(title).size(12.5).strong().color(theme::TEXT),
+                                )
+                                .truncate(),
+                            );
+                        });
+                        if t > 0.62 && !detail.is_empty() {
+                            child.add_space(4.0);
+                            child.add(
+                                egui::Label::new(
+                                    RichText::new(detail).size(11.0).color(theme::MUTED),
+                                )
+                                .wrap(),
+                            );
+                        }
+                        if t > 0.9 && *kind == ToastKind::Error {
+                            child.add_space(3.0);
+                            child.label(
+                                RichText::new("Klik untuk menutup")
+                                    .size(10.0)
+                                    .color(theme::DIM),
+                            );
+                        }
+                    }
+                }
+
+                self.island_hovered = response.hovered();
+                if response.clicked() {
+                    if matches!(
+                        &content,
+                        IslandContent::Toast {
+                            kind: ToastKind::Error,
+                            ..
+                        }
+                    ) {
+                        self.toast = None;
+                        self.island_pinned = false;
+                        self.island_hovered = false;
+                    } else {
+                        self.island_pinned = !self.island_pinned;
+                    }
+                    ctx.request_repaint();
+                }
             });
-        ctx.request_repaint_after(Duration::from_millis(120));
+
+        if t > 0.001 && t < 0.999 {
+            ctx.request_repaint_after(Duration::from_millis(16));
+        } else if self.job.is_some() {
+            ctx.request_repaint_after(Duration::from_millis(120));
+        }
+        if self.toast.is_some() {
+            ctx.request_repaint_after(Duration::from_millis(250));
+        }
     }
 }
 
@@ -989,8 +1200,7 @@ impl eframe::App for CetakinApp {
                 }
             });
 
-        self.toast_ui(&ctx);
-        self.job_ui(&ctx);
+        self.island_ui(&ctx);
 
         if ctx.input(|i| i.viewport().close_requested()) {
             self.save_prefs();

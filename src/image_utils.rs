@@ -78,6 +78,42 @@ pub fn thumbnail(path: &Path, max_side: u32) -> Result<image::RgbaImage, String>
     Ok(thumb.to_rgba8())
 }
 
+/// Putar thumbnail sesuai sudut pengguna (0/90/180/270).
+pub fn rotate_rgba(img: RgbaImage, rotation: u16) -> RgbaImage {
+    match rotation % 360 {
+        90 => image::imageops::rotate90(&img),
+        180 => image::imageops::rotate180(&img),
+        270 => image::imageops::rotate270(&img),
+        _ => img,
+    }
+}
+
+/// Putar gambar penuh sesuai sudut pengguna.
+pub fn rotate_dynamic(img: &DynamicImage, rotation: u16) -> DynamicImage {
+    match rotation % 360 {
+        90 => img.rotate90(),
+        180 => img.rotate180(),
+        270 => img.rotate270(),
+        _ => img.clone(),
+    }
+}
+
+/// Seperti [`prepare_for_cell`], tetapi menerapkan rotasi pengguna lebih dulu.
+pub fn prepare_for_cell_rotated(
+    img: &DynamicImage,
+    cell_w_mm: f32,
+    cell_h_mm: f32,
+    dpi: u32,
+    fit: ImageFit,
+    rotation: u16,
+) -> DynamicImage {
+    if rotation % 360 == 0 {
+        return prepare_for_cell(img, cell_w_mm, cell_h_mm, dpi, fit);
+    }
+    let rotated = rotate_dynamic(img, rotation);
+    prepare_for_cell(&rotated, cell_w_mm, cell_h_mm, dpi, fit)
+}
+
 /// Siapkan gambar agar pas dengan ukuran sel (mm) pada DPI tertentu.
 /// Hasil selalu memiliki rasio = rasio sel, sehingga bisa ditempel 1:1 di PDF.
 pub fn prepare_for_cell(
@@ -212,6 +248,15 @@ mod tests {
         assert_eq!((w, h), (354, 472));
         let px = out.to_rgba8().get_pixel(w / 2, 2).0;
         assert_eq!(px, [255, 255, 255, 255]);
+    }
+
+    #[test]
+    fn rotation_swaps_dimensions() {
+        let img = DynamicImage::ImageRgba8(RgbaImage::from_pixel(40, 20, Rgba([1, 2, 3, 255])));
+        assert_eq!(rotate_dynamic(&img, 90).dimensions(), (20, 40));
+        assert_eq!(rotate_dynamic(&img, 180).dimensions(), (40, 20));
+        assert_eq!(rotate_dynamic(&img, 270).dimensions(), (20, 40));
+        assert_eq!(rotate_dynamic(&img, 0).dimensions(), (40, 20));
     }
 
     #[test]

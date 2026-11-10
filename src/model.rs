@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -189,6 +191,28 @@ impl PhotoSize {
     pub fn short_label(self) -> &'static str {
         self.preset.short_label()
     }
+}
+
+/// Foto yang ditempatkan pada satu sel, lengkap dengan rotasi pengguna.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PhotoRef {
+    pub path: PathBuf,
+    /// Rotasi searah jarum jam dalam derajat: 0, 90, 180, atau 270.
+    pub rotation: u16,
+}
+
+impl PhotoRef {
+    pub fn new(path: PathBuf, rotation: u16) -> Self {
+        Self {
+            path,
+            rotation: normalize_rotation(rotation as i32),
+        }
+    }
+}
+
+/// Normalkan sudut rotasi ke 0/90/180/270.
+pub fn normalize_rotation(degrees: i32) -> u16 {
+    degrees.rem_euclid(360) as u16
 }
 
 // Margins

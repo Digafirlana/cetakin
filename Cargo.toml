@@ -41,6 +41,10 @@ opt-level = 3
 
 [profile.dev]
 opt-level = 1
+# Tanpa debug info, `cargo run` menghasilkan binary ~25 MB (bukan ~380 MB).
+# Backtrace tetap menampilkan nama fungsi karena symbol table dipertahankan.
+debug = 0
+strip = "debuginfo"
 
 [profile.dev.package."*"]
 opt-level = 2
