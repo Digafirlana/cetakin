@@ -5,12 +5,14 @@ use eframe::egui::{
     StrokeKind, Vec2,
 };
 
-use crate::app::{card_title, open_folder, open_path, unique_path, CetakinApp, JobResult, JobTag};
+use crate::app::{CetakinApp, JobResult, JobTag};
 use crate::convert::{self, ResizeFormat};
 use crate::image_utils::{self, format_bytes};
 use crate::model::{ImageFit, PageOrientation, PaperPreset};
 use crate::pdf_export;
 use crate::theme;
+use crate::ui_common::card_title;
+use crate::util::{open_folder, open_path, unique_path};
 
 // ---------------------------------------------------------------------------
 // State
@@ -264,7 +266,7 @@ impl CetakinApp {
                 let (rect, response) =
                     ui.allocate_exact_size(Vec2::new(ui.available_width(), 184.0), Sense::click());
                 let painter = ui.painter();
-                crate::app::dashed_rect(
+                crate::ui_common::dashed_rect(
                     painter,
                     rect.shrink(1.0),
                     Stroke::new(1.0, theme::border()),

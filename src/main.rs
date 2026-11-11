@@ -7,13 +7,19 @@ mod app;
 mod convert;
 mod docx;
 mod image_utils;
+mod jobs;
 mod layout;
 mod model;
 mod pdf_export;
+mod photos;
+mod prefs;
 mod theme;
+mod ui_chrome;
+mod ui_common;
 mod ui_convert;
 mod ui_sheet;
 mod ui_tools;
+mod util;
 
 use std::sync::Arc;
 

@@ -5,9 +5,7 @@ use eframe::egui::{
     Sense, Stroke, StrokeKind, Vec2,
 };
 
-use crate::app::{
-    card_title, cover_uv, drag_cm, label_value, safe_slug, temp_pdf, CetakinApp, JobResult, JobTag,
-};
+use crate::app::{CetakinApp, JobResult, JobTag};
 use crate::convert;
 use crate::image_utils;
 use crate::layout::{self, SheetLayout};
@@ -17,6 +15,8 @@ use crate::model::{
 };
 use crate::pdf_export;
 use crate::theme;
+use crate::ui_common::{card_title, cover_uv, drag_cm, label_value};
+use crate::util::{safe_slug, temp_pdf};
 
 impl CetakinApp {
     // -------------------------------------------------------------- layout
@@ -750,7 +750,7 @@ impl CetakinApp {
                 mm(margins.left_mm, margins.top_mm),
                 mm(pw - margins.right_mm, ph - margins.bottom_mm),
             );
-            crate::app::dashed_rect(
+            crate::ui_common::dashed_rect(
                 &painter,
                 guide,
                 Stroke::new(1.0, Color32::from_rgba_unmultiplied(120, 128, 140, 150)),
@@ -769,7 +769,7 @@ impl CetakinApp {
             let texture = photo.and_then(|p| self.texture_for_rotated(&ctx, &p.path, p.rotation));
             match texture {
                 Some(tex) => {
-                    crate::app::paint_photo(&painter, target, &tex, self.settings.fit);
+                    crate::ui_common::paint_photo(&painter, target, &tex, self.settings.fit);
                 }
                 None => {
                     painter.rect_filled(
@@ -955,7 +955,7 @@ impl CetakinApp {
                 ui.allocate_exact_size(Vec2::new(ui.available_width(), 62.0), Sense::click());
             let painter = ui.painter();
             let stroke = Stroke::new(1.0, theme::border());
-            crate::app::dashed_rect(painter, rect.shrink(1.0), stroke);
+            crate::ui_common::dashed_rect(painter, rect.shrink(1.0), stroke);
             painter.text(
                 rect.center(),
                 Align2::CENTER_CENTER,
@@ -1104,7 +1104,7 @@ impl CetakinApp {
                     }
                     let (rect, response) =
                         ui.allocate_exact_size(Vec2::splat(76.0), Sense::click());
-                    crate::app::dashed_rect(
+                    crate::ui_common::dashed_rect(
                         ui.painter(),
                         rect.shrink(1.0),
                         Stroke::new(1.0, theme::border()),

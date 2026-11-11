@@ -5,14 +5,14 @@ use eframe::egui::{
     Sense, Stroke, Vec2,
 };
 
-use crate::app::{
-    card_title, cover_uv, label_value, open_folder, open_path, CetakinApp, JobResult, JobTag,
-};
+use crate::app::{CetakinApp, JobResult, JobTag};
 use crate::convert::{self, ToolStatus};
 use crate::image_utils::{self, format_bytes};
 use crate::layout;
 use crate::model::{MarginPreset, PageOrientation, PaperPreset, PhotoPreset, PhotoSize, SheetMode};
 use crate::theme;
+use crate::ui_common::{card_title, cover_uv, label_value};
+use crate::util::{open_folder, open_path};
 
 // Kertas & foto yang dipakai pada tabel kapasitas.
 const CAPACITY_PAPERS: [PaperPreset; 6] = [
@@ -126,7 +126,7 @@ impl CetakinApp {
             let Some(path) = self.inspector.clone() else {
                 let (rect, response) =
                     ui.allocate_exact_size(Vec2::new(ui.available_width(), 210.0), Sense::click());
-                crate::app::dashed_rect(
+                crate::ui_common::dashed_rect(
                     ui.painter(),
                     rect.shrink(1.0),
                     Stroke::new(1.0, theme::border()),

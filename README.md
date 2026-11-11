@@ -41,6 +41,7 @@ Dibuat dengan **Rust + eframe/egui** (renderer glow/OpenGL). Berjalan di **Windo
 - **Tema macOS Tahoe (Liquid Glass)**: latar bergradasi gelap, panel kaca transparan,
   aksen biru sistem Apple, sudut membulat besar, dan scrollbar mengambang.
 - **Dynamic Island** di tengah atas: progress job serta toast sukses/error/info.
+- **Notifikasi Catppuccin Mocha**: kapsul membulat penuh, warna lembut, aksen hijau/merah/biru sesuai status.
 - Ringkas saat berjalan, membesar saat hover/klik; error tetap terbuka sampai ditutup.
 - Animasi buka/tutup halus tanpa dependency tambahan.
 
@@ -144,7 +145,13 @@ Drag & drop file ke jendela:
 ```
 src/
   main.rs         Bootstrap jendela, ikon, eframe
-  app.rs          State aplikasi, sidebar, header, job, toast, preferensi
+  app.rs          State aplikasi, Tab, handler shortcut & drag-drop
+  photos.rs       Daftar foto, rotasi, thumbnail, pemetaan ke layout
+  jobs.rs         Job latar belakang & toast notifikasi
+  prefs.rs        Muat, simpan, dan reset preferensi
+  ui_chrome.rs    Sidebar, header, dan Dynamic Island
+  ui_common.rs    Widget UI bersama (kartu, slider, dashed rect)
+  util.rs         Helper path & filesystem
   model.rs        Tipe pengaturan, preset kertas/foto/margin
   layout.rs       Mesin tata letak halaman & garis potong
   image_utils.rs  EXIF, thumbnail, DPI, crop/contain
