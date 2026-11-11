@@ -709,11 +709,14 @@ impl CetakinApp {
                         RichText::new(format!("Jalankan {}", self.convert.op.title()))
                             .size(13.5)
                             .strong()
-                            .color(Color32::from_rgb(8, 20, 12)),
+                            .color(Color32::WHITE),
                     )
                     .fill(theme::ACCENT)
-                    .stroke(Stroke::NONE)
-                    .corner_radius(CornerRadius::same(10))
+                    .stroke(Stroke::new(
+                        1.0,
+                        Color32::from_rgba_unmultiplied(255, 255, 255, 60),
+                    ))
+                    .corner_radius(CornerRadius::same(12))
                     .min_size(Vec2::new(ui.available_width(), 40.0))
                 })
                 .clicked()

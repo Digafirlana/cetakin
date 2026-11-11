@@ -298,9 +298,9 @@ impl CetakinApp {
     fn capacity_card(&mut self, ui: &mut egui::Ui) {
         theme::card().show(ui, |ui| {
             ui.horizontal(|ui| {
-                card_title(ui, theme::Icon::Page, "Kalkulator Kapasitas Kertas");
+                card_title(ui, theme::Icon::Page, "Kapasitas Kertas");
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    if theme::secondary_button(ui, "Terapkan ke Lembar").clicked() {
+                    if theme::secondary_button(ui, "Terapkan").clicked() {
                         let state = capacity_state(ui);
                         let paper = CAPACITY_PAPERS[state.0.min(CAPACITY_PAPERS.len() - 1)];
                         let photo = CAPACITY_PHOTOS[state.1.min(CAPACITY_PHOTOS.len() - 1)];
@@ -947,7 +947,7 @@ impl CetakinApp {
                     ui.painter(),
                     rect.shrink(10.0),
                     theme::Icon::Print,
-                    Color32::from_rgb(8, 24, 14),
+                    Color32::WHITE,
                     1.8,
                 );
                 ui.vertical(|ui| {

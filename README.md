@@ -38,6 +38,8 @@ Dibuat dengan **Rust + eframe/egui** (renderer glow/OpenGL). Berjalan di **Windo
 - **Status komponen pendukung** (LibreOffice, Poppler, MuPDF, ImageMagick, CUPS).
 
 ### 4. Antarmuka
+- **Tema macOS Tahoe (Liquid Glass)**: latar bergradasi, panel kaca transparan,
+  aksen biru sistem Apple, sudut membulat besar, dan scrollbar mengambang.
 - **Dynamic Island** di tengah atas: progress job serta toast sukses/error/info.
 - Ringkas saat berjalan, membesar saat hover/klik; error tetap terbuka sampai ditutup.
 - Animasi buka/tutup halus tanpa dependency tambahan.

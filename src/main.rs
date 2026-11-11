@@ -41,7 +41,7 @@ fn main() -> eframe::Result {
 fn app_icon() -> egui::IconData {
     const SIZE: usize = 64;
     const RADIUS: i32 = 14;
-    let accent = [47u8, 227, 111, 255];
+    let accent = [10u8, 132, 255, 255];
     let dark = [8u8, 24, 14, 255];
     let paper = [245u8, 248, 246, 255];
 

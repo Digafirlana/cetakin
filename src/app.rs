@@ -41,7 +41,7 @@ impl Tab {
     pub fn subtitle(self) -> &'static str {
         match self {
             Tab::Sheet => "Susun pas foto di kertas, atur margin, lalu cetak.",
-            Tab::Convert => "PDF, Word, dan gambar — satu alur kerja.",
+            Tab::Convert => "PDF, Word, dan gambar",
             Tab::Tools => "Cek kualitas foto, kapasitas kertas, dan printer.",
             Tab::Settings => "Preferensi studio, dependensi, dan informasi aplikasi.",
         }
@@ -742,11 +742,17 @@ impl CetakinApp {
             let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
             ui.painter()
                 .rect_filled(rect, CornerRadius::same(11), theme::ACCENT);
+            ui.painter().rect_stroke(
+                rect,
+                CornerRadius::same(11),
+                Stroke::new(1.0, Color32::from_white_alpha(70)),
+                StrokeKind::Inside,
+            );
             theme::icon(
                 ui.painter(),
                 rect.shrink(8.0),
                 theme::Icon::Print,
-                Color32::from_rgb(8, 24, 14),
+                Color32::WHITE,
                 1.8,
             );
             ui.add_space(2.0);
@@ -795,17 +801,18 @@ impl CetakinApp {
         );
         let hovered = response.hovered();
         if selected {
+            // Baris terpilih: kaca biru lembut khas sidebar Tahoe.
             ui.painter()
-                .rect_filled(rect, CornerRadius::same(12), theme::CARD);
-            let bar = egui::Rect::from_min_size(
-                egui::pos2(rect.left() + 1.0, rect.center().y - 9.0),
-                Vec2::new(3.0, 18.0),
+                .rect_filled(rect, CornerRadius::same(11), theme::ACCENT_SOFT);
+            ui.painter().rect_stroke(
+                rect,
+                CornerRadius::same(11),
+                Stroke::new(1.0, Color32::from_rgba_unmultiplied(10, 132, 255, 90)),
+                StrokeKind::Inside,
             );
-            ui.painter()
-                .rect_filled(bar, CornerRadius::same(2), theme::ACCENT);
         } else if hovered {
             ui.painter()
-                .rect_filled(rect, CornerRadius::same(12), theme::CARD_HOVER);
+                .rect_filled(rect, CornerRadius::same(11), theme::CARD_HOVER);
         }
         let icon_rect = egui::Rect::from_center_size(
             egui::pos2(rect.left() + 23.0, rect.center().y),
@@ -815,11 +822,7 @@ impl CetakinApp {
             ui.painter(),
             icon_rect,
             icon,
-            if selected {
-                theme::ACCENT
-            } else {
-                theme::MUTED
-            },
+            if selected { theme::TEXT } else { theme::MUTED },
             1.5,
         );
         ui.painter().text(
@@ -882,11 +885,7 @@ impl CetakinApp {
                 );
             }
         });
-        ui.label(
-            RichText::new("v0.1.0  ·  Rust + egui")
-                .size(10.0)
-                .color(theme::DIM),
-        );
+        ui.label(RichText::new("v0.1.0").size(10.0).color(theme::DIM));
     }
 
     fn header(&mut self, ui: &mut egui::Ui) {
@@ -1032,10 +1031,19 @@ impl CetakinApp {
                 ui.painter().rect(
                     rect,
                     corner,
-                    Color32::from_rgb(23, 25, 29),
+                    theme::ISLAND,
                     Stroke::new(1.0, border),
                     StrokeKind::Inside,
                 );
+                // Kilau tipis di tepi atas — efek kaca kapsul Tahoe.
+                let gloss = egui::Rect::from_min_max(
+                    rect.left_top() + egui::vec2(corner.nw as f32, 0.0),
+                    egui::pos2(rect.right() - corner.ne as f32, rect.top() + 1.5),
+                );
+                if gloss.width() > 0.0 {
+                    ui.painter()
+                        .rect_filled(gloss, CornerRadius::same(1), theme::GLASS_TOP);
+                }
 
                 let inner = rect.shrink2(egui::vec2(14.0 + 2.0 * t, 9.0 + 3.0 * t));
                 let mut child = ui.new_child(
@@ -1070,6 +1078,7 @@ impl CetakinApp {
                             child.add(
                                 egui::ProgressBar::new(*progress)
                                     .fill(theme::ACCENT)
+                                    .corner_radius(4)
                                     .desired_height(8.0),
                             );
                             child.add_space(3.0);
@@ -1165,8 +1174,7 @@ impl eframe::App for CetakinApp {
         self.handle_shortcuts(&ctx);
         self.handle_drops(&ctx);
 
-        ui.painter()
-            .rect_filled(ui.max_rect(), CornerRadius::ZERO, theme::BG);
+        theme::paint_background(ui);
 
         egui::Panel::left("cetakin-sidebar")
             .exact_size(228.0)
@@ -1174,22 +1182,27 @@ impl eframe::App for CetakinApp {
             .frame(
                 egui::Frame::new()
                     .fill(theme::SIDEBAR)
+                    .stroke(Stroke::new(1.0, theme::BORDER_SOFT))
                     .inner_margin(Margin {
                         left: 18,
                         right: 18,
-                        top: 20,
+                        top: 18,
                         bottom: 16,
                     }),
             )
             .show(ui, |ui| self.sidebar(ui));
 
         egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(theme::BG).inner_margin(Margin {
-                left: 24,
-                right: 24,
-                top: 18,
-                bottom: 18,
-            }))
+            .frame(
+                egui::Frame::new()
+                    .fill(Color32::TRANSPARENT)
+                    .inner_margin(Margin {
+                        left: 24,
+                        right: 24,
+                        top: 18,
+                        bottom: 18,
+                    }),
+            )
             .show(ui, |ui| {
                 self.header(ui);
                 match self.tab {

@@ -26,12 +26,16 @@ impl CetakinApp {
         egui::Panel::left("cetakin-sheet-settings")
             .exact_size(362.0)
             .resizable(false)
-            .frame(egui::Frame::new().fill(theme::BG).inner_margin(Margin {
-                left: 0,
-                right: 16,
-                top: 0,
-                bottom: 0,
-            }))
+            .frame(
+                egui::Frame::new()
+                    .fill(Color32::TRANSPARENT)
+                    .inner_margin(Margin {
+                        left: 0,
+                        right: 16,
+                        top: 0,
+                        bottom: 0,
+                    }),
+            )
             .show(ui, |ui| {
                 ScrollArea::vertical()
                     .id_salt("sheet-settings-scroll")
@@ -42,7 +46,7 @@ impl CetakinApp {
                     });
             });
         egui::CentralPanel::default()
-            .frame(egui::Frame::new().fill(theme::BG))
+            .frame(egui::Frame::new().fill(Color32::TRANSPARENT))
             .show(ui, |ui| self.preview_panel(ui, &layout));
     }
 
@@ -778,7 +782,7 @@ impl CetakinApp {
         }
 
         if self.show_guides {
-            let accent = Color32::from_rgba_unmultiplied(47, 227, 111, 175);
+            let accent = Color32::from_rgba_unmultiplied(10, 132, 255, 190);
             for (x0, y0, x1, y1) in layout::cut_segments(layout, self.settings.cut_style) {
                 let a = mm(x0, y0);
                 let b = mm(x1, y1);
@@ -994,7 +998,10 @@ impl CetakinApp {
                         let border = if active {
                             Stroke::new(2.0, theme::ACCENT)
                         } else if response.hovered() {
-                            Stroke::new(1.0, Color32::from_rgb(82, 88, 100))
+                            Stroke::new(
+                                1.0,
+                                Color32::from_rgba_unmultiplied(255, 255, 255, 70),
+                            )
                         } else {
                             Stroke::new(1.0, theme::BORDER)
                         };
