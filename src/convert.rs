@@ -8,6 +8,7 @@ use lopdf::{dictionary, Document, Object};
 
 use crate::docx::{self, DocxPage, DocxPageImage};
 use crate::image_utils::{load_image, save_image, SUPPORTED_IMAGE_EXTS};
+use crate::model::{ImageFit, PageOrientation, SheetSettings};
 use crate::pdf_export;
 
 pub const PDF_EXTS: &[&str] = &["pdf"];
@@ -532,6 +533,10 @@ pub fn merge_pdfs(
         }
     }
 
+    // `objects.insert` tidak memperbarui max_id; tanpa ini tabel xref yang
+    // ditulis lopdf hanya mencakup sebagian objek sehingga PDF gagal dibuka.
+    out.max_id = out.objects.keys().map(|(id, _)| *id).max().unwrap_or(0);
+
     let pages_id = out.new_object_id();
     for pid in &page_ids {
         if let Ok(Object::Dictionary(dict)) = out.get_object_mut(*pid) {
@@ -562,6 +567,103 @@ pub fn merge_pdfs(
         note: format!(
             "{} halaman dari {} PDF digabung.",
             page_ids.len(),
+            inputs.len()
+        ),
+    })
+}
+
+/// Combine semua file yang didukung (gambar, PDF, Word/ODT) menjadi satu PDF.
+/// Urutan daftar input menentukan urutan halaman hasil.
+pub fn combine_to_pdf(
+    inputs: &[PathBuf],
+    output: &Path,
+    settings: &SheetSettings,
+    dpi: u32,
+    tools: &ToolStatus,
+    progress: &mut dyn FnMut(f32, &str),
+) -> Result<ConvertOutcome, String> {
+    if inputs.is_empty() {
+        return Err("Tambahkan minimal satu file untuk di-combine.".to_string());
+    }
+    let work = unique_work_dir("combine");
+    let total = inputs.len().max(1);
+
+    let prepared = (|| -> Result<Vec<PathBuf>, String> {
+        let mut pdfs = Vec::new();
+        for (i, input) in inputs.iter().enumerate() {
+            let base = 0.05 + 0.65 * i as f32 / total as f32;
+            let span = 0.65 / total as f32;
+            progress(
+                base,
+                &format!(
+                    "Menyiapkan {} / {} · {}",
+                    i + 1,
+                    total,
+                    input.file_name().and_then(OsStr::to_str).unwrap_or("file")
+                ),
+            );
+            let mut cb = |p: f32, m: &str| progress(base + p.clamp(0.0, 1.0) * span, m);
+            if is_pdf_file(input) {
+                pdfs.push(input.clone());
+            } else if is_image_file(input) {
+                let dest = work.join(format!("bagian-{:03}.pdf", i + 1));
+                let mut page = settings.clone();
+                page.orientation = PageOrientation::Auto;
+                page.dpi = dpi;
+                pdf_export::images_to_pdf(
+                    &dest,
+                    std::slice::from_ref(input),
+                    &page,
+                    ImageFit::Contain,
+                    0.0,
+                    dpi,
+                    &mut cb,
+                )?;
+                pdfs.push(dest);
+            } else if crate::image_utils::is_docx(input) {
+                let dest_dir = work.join(format!("dokumen-{:03}", i + 1));
+                fs::create_dir_all(&dest_dir)
+                    .map_err(|e| format!("Gagal membuat folder sementara: {e}"))?;
+                let outcome = docx_to_pdf(input, &dest_dir, tools, &mut cb)?;
+                let pdf = outcome
+                    .files
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| format!("{} tidak menghasilkan PDF.", input.display()))?;
+                pdfs.push(pdf);
+            } else {
+                return Err(format!("Format tidak didukung: {}", input.display()));
+            }
+        }
+        Ok(pdfs)
+    })();
+
+    let pdfs = match prepared {
+        Ok(pdfs) => pdfs,
+        Err(e) => {
+            let _ = fs::remove_dir_all(&work);
+            return Err(e);
+        }
+    };
+
+    if let Some(parent) = output.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let written = if pdfs.len() == 1 {
+        progress(0.75, "Menulis PDF…");
+        fs::copy(&pdfs[0], output)
+            .map(|_| ())
+            .map_err(|e| format!("Gagal menulis PDF: {e}"))
+    } else {
+        merge_pdfs(&pdfs, output, &mut |p, m| progress(0.7 + p * 0.3, m)).map(|_| ())
+    };
+    let _ = fs::remove_dir_all(&work);
+    written?;
+    progress(1.0, "Selesai");
+    Ok(ConvertOutcome {
+        files: vec![output.to_path_buf()],
+        note: format!(
+            "{} file (gambar/PDF/Word) di-combine menjadi satu PDF.",
             inputs.len()
         ),
     })
@@ -722,6 +824,31 @@ mod tests {
         let second = unique_destination(dir.join("hasil.png"));
         assert_ne!(first, second);
         assert!(second.to_string_lossy().contains("hasil-2"));
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn combine_images_into_single_pdf() {
+        let dir = unique_work_dir("test-combine");
+        let a = dir.join("a.png");
+        let b = dir.join("b.png");
+        image::RgbImage::from_pixel(60, 90, image::Rgb([200, 30, 30]))
+            .save(&a)
+            .unwrap();
+        image::RgbImage::from_pixel(60, 90, image::Rgb([30, 60, 200]))
+            .save(&b)
+            .unwrap();
+
+        let output = dir.join("combined.pdf");
+        let settings = SheetSettings::default();
+        let tools = ToolStatus::default();
+        let outcome =
+            combine_to_pdf(&[a, b], &output, &settings, 150, &tools, &mut |_, _| {}).unwrap();
+        assert_eq!(outcome.files, vec![output.clone()]);
+        let bytes = fs::read(&output).unwrap();
+        assert!(bytes.starts_with(b"%PDF"));
+        let doc = Document::load(&output).unwrap();
+        assert_eq!(doc.get_pages().len(), 2);
         let _ = fs::remove_dir_all(dir);
     }
 }

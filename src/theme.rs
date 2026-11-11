@@ -14,12 +14,12 @@ use eframe::egui::{
 //   • Traffic-light: merah #FF5F57 · kuning #FFBD2E · hijau #28C840
 //   • Typography : SF Pro Display / SF Pro Text — diwakili proporsional egui
 
-// ── Mode terang / gelap ────────────────────────────────────────────────────
+// ── Tema gelap (aplikasi selalu memakai mode gelap) ────────────────────────
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static DARK_MODE: AtomicBool = AtomicBool::new(true);
 
-/// Ubah mode tampilan. Panggil `apply` setelahnya agar widget ikut berubah.
+/// Tetapkan mode tampilan. Saat ini aplikasi selalu memakai mode gelap.
 pub fn set_dark(dark: bool) {
     DARK_MODE.store(dark, Ordering::Relaxed);
 }
@@ -65,7 +65,7 @@ pub fn bg_bottom() -> Color32 {
 pub fn sidebar() -> Color32 {
     pick(
         Color32::from_rgba_premultiplied(16, 16, 16, 16),
-        Color32::from_rgba_premultiplied(14, 14, 14, 14),
+        Color32::from_rgba_unmultiplied(255, 255, 255, 150),
     )
 }
 
@@ -85,7 +85,7 @@ pub fn card_hover() -> Color32 {
     )
 }
 
-/// Input field — lebih gelap dari kartu di mode gelap, putih di mode terang.
+/// Input field — lebih gelap dari kartu agar menyatu dengan tema gelap.
 pub fn input() -> Color32 {
     pick(
         Color32::from_rgba_premultiplied(0, 0, 0, 90),
@@ -181,9 +181,12 @@ pub fn blue() -> Color32 {
 pub fn glass_top() -> Color32 {
     Color32::from_rgba_premultiplied(26, 26, 26, 26)
 }
-/// Kapsul hitam pekat untuk Dynamic Island.
+/// Kapsul Dynamic Island — hitam pekat sesuai tema gelap.
 pub fn island() -> Color32 {
-    Color32::from_rgb(10, 10, 12)
+    pick(
+        Color32::from_rgb(10, 10, 12),
+        Color32::from_rgb(250, 250, 252),
+    )
 }
 
 /// Latar bergradasi vertikal — dipanggil sekali di root window.
@@ -382,10 +385,7 @@ pub fn card() -> egui::Frame {
             offset: [0, 5],
             blur: 16,
             spread: 0,
-            color: pick(
-                Color32::from_black_alpha(45),
-                Color32::from_black_alpha(18),
-            ),
+            color: pick(Color32::from_black_alpha(45), Color32::from_black_alpha(18)),
         })
         .inner_margin(Margin::same(18))
 }
@@ -489,7 +489,10 @@ pub fn separator(ui: &mut egui::Ui) {
 pub fn segmented(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
     // Container pill transparan
     egui::Frame::new()
-        .fill(Color32::from_rgba_unmultiplied(0, 0, 0, 60))
+        .fill(pick(
+            Color32::from_rgba_unmultiplied(0, 0, 0, 60),
+            Color32::from_rgba_unmultiplied(0, 0, 0, 22),
+        ))
         .corner_radius(CornerRadius::same(11))
         .inner_margin(Margin::same(3))
         .show(ui, |ui| {
@@ -512,7 +515,13 @@ pub fn segmented(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
                             Color32::TRANSPARENT
                         })
                         .stroke(if active {
-                            Stroke::new(1.0, Color32::from_rgba_unmultiplied(255, 255, 255, 40))
+                            Stroke::new(
+                                1.0,
+                                pick(
+                                    Color32::from_rgba_unmultiplied(255, 255, 255, 40),
+                                    Color32::from_rgba_unmultiplied(0, 0, 0, 28),
+                                ),
+                            )
                         } else {
                             Stroke::NONE
                         })
@@ -530,7 +539,10 @@ pub fn segmented(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
 /// Segmented RTL — seperti `segmented` tapi untuk layout kanan-ke-kiri
 pub fn segmented_rtl(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
     egui::Frame::new()
-        .fill(Color32::from_rgba_unmultiplied(0, 0, 0, 60))
+        .fill(pick(
+            Color32::from_rgba_unmultiplied(0, 0, 0, 60),
+            Color32::from_rgba_unmultiplied(0, 0, 0, 22),
+        ))
         .corner_radius(CornerRadius::same(11))
         .inner_margin(Margin::same(3))
         .show(ui, |ui| {
@@ -543,12 +555,21 @@ pub fn segmented_rtl(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
                         muted()
                     }))
                     .fill(if active {
-                        Color32::from_rgba_unmultiplied(255, 255, 255, 36)
+                        pick(
+                            Color32::from_rgba_unmultiplied(255, 255, 255, 36),
+                            Color32::WHITE,
+                        )
                     } else {
                         Color32::TRANSPARENT
                     })
                     .stroke(if active {
-                        Stroke::new(1.0, Color32::from_rgba_unmultiplied(255, 255, 255, 40))
+                        Stroke::new(
+                            1.0,
+                            pick(
+                                Color32::from_rgba_unmultiplied(255, 255, 255, 40),
+                                Color32::from_rgba_unmultiplied(0, 0, 0, 28),
+                            ),
+                        )
                     } else {
                         Stroke::NONE
                     })
@@ -583,6 +604,7 @@ pub enum Icon {
     Warning,
     Page,
     Close,
+    Stack,
 }
 
 pub fn icon(painter: &egui::Painter, rect: egui::Rect, kind: Icon, color: Color32, width: f32) {
@@ -716,6 +738,17 @@ pub fn icon(painter: &egui::Painter, rect: egui::Rect, kind: Icon, color: Color3
         Icon::Close => {
             painter.line_segment([p(0.18, 0.18), p(0.82, 0.82)], s);
             painter.line_segment([p(0.82, 0.18), p(0.18, 0.82)], s);
+        }
+        Icon::Stack => {
+            // Tiga lembar bertumpuk — simbol combine / kumpulan file.
+            for (dx, dy) in [(0.0, 0.0), (0.12, 0.12), (0.24, 0.24)] {
+                painter.rect_stroke(
+                    egui::Rect::from_min_max(p(0.04 + dx, 0.04 + dy), p(0.66 + dx, 0.66 + dy)),
+                    CornerRadius::same(2),
+                    s,
+                    StrokeKind::Middle,
+                );
+            }
         }
     }
 }

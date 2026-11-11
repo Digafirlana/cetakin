@@ -22,7 +22,7 @@ pub enum ConvertOp {
     PdfToImages,
     PdfToDocx,
     DocxToPdf,
-    MergePdf,
+    CombinePdf,
     CompressImages,
 }
 
@@ -32,7 +32,7 @@ impl ConvertOp {
         ConvertOp::PdfToImages,
         ConvertOp::PdfToDocx,
         ConvertOp::DocxToPdf,
-        ConvertOp::MergePdf,
+        ConvertOp::CombinePdf,
         ConvertOp::CompressImages,
     ];
 
@@ -42,7 +42,7 @@ impl ConvertOp {
             ConvertOp::PdfToImages => "PDF ke PNG",
             ConvertOp::PdfToDocx => "PDF ke Word",
             ConvertOp::DocxToPdf => "Word ke PDF",
-            ConvertOp::MergePdf => "Gabung PDF",
+            ConvertOp::CombinePdf => "Combine Menjadi PDF",
             ConvertOp::CompressImages => "Kompres Gambar",
         }
     }
@@ -53,7 +53,7 @@ impl ConvertOp {
             ConvertOp::PdfToImages => "Render halaman jadi PNG",
             ConvertOp::PdfToDocx => "Teks + gambar halaman",
             ConvertOp::DocxToPdf => "Via LibreOffice",
-            ConvertOp::MergePdf => "Urutkan lalu satukan",
+            ConvertOp::CombinePdf => "Semua file jadi satu PDF",
             ConvertOp::CompressImages => "Perkecil & ganti format",
         }
     }
@@ -63,7 +63,11 @@ impl ConvertOp {
             ConvertOp::ImagesToPdf | ConvertOp::CompressImages => convert::is_image_file(path),
             ConvertOp::PdfToImages | ConvertOp::PdfToDocx => convert::is_pdf_file(path),
             ConvertOp::DocxToPdf => image_utils::is_docx(path),
-            ConvertOp::MergePdf => convert::is_pdf_file(path),
+            ConvertOp::CombinePdf => {
+                convert::is_image_file(path)
+                    || convert::is_pdf_file(path)
+                    || image_utils::is_docx(path)
+            }
         }
     }
 
@@ -73,7 +77,7 @@ impl ConvertOp {
             ConvertOp::PdfToImages => "PDF (bisa lebih dari satu)",
             ConvertOp::PdfToDocx => "PDF (bisa lebih dari satu)",
             ConvertOp::DocxToPdf => "DOCX, DOC, ODT, RTF",
-            ConvertOp::MergePdf => "Minimal dua file PDF",
+            ConvertOp::CombinePdf => "Gambar, PDF, Word — bisa campur",
             ConvertOp::CompressImages => "JPG, PNG, WEBP, BMP, TIFF",
         }
     }
@@ -210,7 +214,7 @@ impl CetakinApp {
                     ui.label(
                         RichText::new(format!("Format diterima: {}", self.convert.op.hint()))
                             .size(10.5)
-                            .color(theme::DIM),
+                            .color(theme::dim()),
                     );
                 });
 
@@ -250,7 +254,7 @@ impl CetakinApp {
                     theme::badge(
                         ui,
                         &format!("{} file", self.convert.files.len()),
-                        theme::MUTED,
+                        theme::muted(),
                     );
                 });
             });
@@ -260,7 +264,11 @@ impl CetakinApp {
                 let (rect, response) =
                     ui.allocate_exact_size(Vec2::new(ui.available_width(), 184.0), Sense::click());
                 let painter = ui.painter();
-                crate::app::dashed_rect(painter, rect.shrink(1.0), Stroke::new(1.0, theme::BORDER));
+                crate::app::dashed_rect(
+                    painter,
+                    rect.shrink(1.0),
+                    Stroke::new(1.0, theme::border()),
+                );
                 let icon_rect = egui::Rect::from_center_size(
                     rect.center() - Vec2::new(0.0, 22.0),
                     Vec2::splat(30.0),
@@ -269,7 +277,7 @@ impl CetakinApp {
                     painter,
                     icon_rect,
                     theme::Icon::Download,
-                    theme::ACCENT,
+                    theme::accent(),
                     1.6,
                 );
                 painter.text(
@@ -277,14 +285,14 @@ impl CetakinApp {
                     egui::Align2::CENTER_CENTER,
                     "Jatuhkan file ke jendela",
                     FontId::proportional(13.0),
-                    theme::TEXT,
+                    theme::text(),
                 );
                 painter.text(
                     rect.center() + Vec2::new(0.0, 30.0),
                     egui::Align2::CENTER_CENTER,
                     self.convert.op.hint(),
                     FontId::proportional(10.5),
-                    theme::DIM,
+                    theme::dim(),
                 );
                 if response.clicked() {
                     self.convert.pick_files_dialog();
@@ -330,7 +338,7 @@ impl CetakinApp {
                             ui.painter().rect_filled(
                                 rect,
                                 CornerRadius::same(9),
-                                theme::CARD_HOVER,
+                                theme::card_hover(),
                             );
                         }
                         let icon = if convert::is_pdf_file(path) {
@@ -347,7 +355,11 @@ impl CetakinApp {
                                 Vec2::splat(16.0),
                             ),
                             icon,
-                            if *accepted { theme::ACCENT } else { theme::RED },
+                            if *accepted {
+                                theme::accent()
+                            } else {
+                                theme::red()
+                            },
                             1.4,
                         );
                         ui.painter().text(
@@ -355,7 +367,7 @@ impl CetakinApp {
                             egui::Align2::LEFT_CENTER,
                             &shorten(name, 34),
                             FontId::proportional(12.0),
-                            theme::TEXT,
+                            theme::text(),
                         );
                         ui.painter().text(
                             egui::pos2(rect.left() + 34.0, rect.center().y + 8.0),
@@ -366,7 +378,11 @@ impl CetakinApp {
                                 format!("{} · tidak cocok dengan operasi", format_bytes(*size))
                             },
                             FontId::proportional(9.5),
-                            if *accepted { theme::DIM } else { theme::RED },
+                            if *accepted {
+                                theme::dim()
+                            } else {
+                                theme::red()
+                            },
                         );
 
                         let controls = egui::Rect::from_min_max(
@@ -381,7 +397,7 @@ impl CetakinApp {
                         if theme::icon_button(&mut child, theme::Icon::Close, "Hapus").clicked() {
                             remove = Some(i);
                         }
-                        if self.convert.op == ConvertOp::MergePdf {
+                        if self.convert.op == ConvertOp::CombinePdf {
                             if theme::icon_button(&mut child, theme::Icon::Down, "Turun").clicked()
                             {
                                 move_down = Some(i);
@@ -418,9 +434,9 @@ impl CetakinApp {
                     self.convert.pick_files_dialog();
                 }
                 ui.label(
-                    RichText::new("Gunakan tombol panah untuk mengatur urutan gabung.")
+                    RichText::new("Gunakan tombol panah untuk mengatur urutan hasil combine.")
                         .size(10.0)
-                        .color(theme::DIM),
+                        .color(theme::dim()),
                 );
             });
         });
@@ -437,7 +453,7 @@ impl CetakinApp {
                     ui.label(
                         RichText::new("Margin halaman")
                             .size(11.5)
-                            .color(theme::MUTED),
+                            .color(theme::muted()),
                     );
                     ui.add(
                         egui::Slider::new(&mut self.convert.margin_mm, 0.0..=40.0)
@@ -455,13 +471,13 @@ impl CetakinApp {
                     );
                     if self.convert.use_page_range {
                         ui.horizontal(|ui| {
-                            ui.label(RichText::new("Dari").size(11.0).color(theme::MUTED));
+                            ui.label(RichText::new("Dari").size(11.0).color(theme::muted()));
                             ui.add(
                                 egui::DragValue::new(&mut self.convert.first_page)
                                     .range(1..=9999)
                                     .speed(0.2),
                             );
-                            ui.label(RichText::new("sampai").size(11.0).color(theme::MUTED));
+                            ui.label(RichText::new("sampai").size(11.0).color(theme::muted()));
                             ui.add(
                                 egui::DragValue::new(&mut self.convert.last_page)
                                     .range(1..=9999)
@@ -481,7 +497,7 @@ impl CetakinApp {
                             "Teks tetap diekstrak sebagai paragraf yang bisa diedit. Gambar halaman membuat hasil lebih mirip aslinya.",
                         )
                         .size(10.5)
-                        .color(theme::DIM),
+                        .color(theme::dim()),
                     );
                     ui.add_space(8.0);
                     self.dpi_segments(ui);
@@ -490,20 +506,20 @@ impl CetakinApp {
                 ConvertOp::DocxToPdf => {
                     if self.tools.libreoffice.is_some() {
                         ui.horizontal(|ui| {
-                            theme::dot(ui, theme::ACCENT);
+                            theme::dot(ui, theme::accent());
                             ui.label(
                                 RichText::new("LibreOffice terdeteksi — format asli dipertahankan.")
                                     .size(11.5)
-                                    .color(theme::TEXT),
+                                    .color(theme::text()),
                             );
                         });
                     } else {
                         ui.horizontal(|ui| {
-                            theme::dot(ui, theme::YELLOW);
+                            theme::dot(ui, theme::yellow());
                             ui.label(
                                 RichText::new("LibreOffice tidak ada — DOCX akan dirender sebagai teks.")
                                     .size(11.5)
-                                    .color(theme::YELLOW),
+                                    .color(theme::yellow()),
                             );
                         });
                         ui.label(
@@ -511,34 +527,50 @@ impl CetakinApp {
                                 "Pasang LibreOffice untuk mempertahankan tabel, gambar, dan layout Word.",
                             )
                             .size(10.5)
-                            .color(theme::DIM),
+                            .color(theme::dim()),
                         );
                     }
                     ui.add_space(8.0);
                     ui.label(
                         RichText::new("PDF ditulis ke folder output dengan nama file yang sama.")
                             .size(10.5)
-                            .color(theme::MUTED),
+                            .color(theme::muted()),
                     );
                 }
-                ConvertOp::MergePdf => {
+                ConvertOp::CombinePdf => {
                     ui.label(
                         RichText::new(
-                            "Urutan file pada daftar menentukan urutan halaman PDF hasil gabungan.",
+                            "Semua file pada daftar digabung menjadi satu PDF. Urutan daftar menentukan urutan halaman.",
                         )
                         .size(11.5)
-                        .color(theme::MUTED),
+                        .color(theme::muted()),
                     );
                     ui.add_space(6.0);
-                    if self.convert.files.len() < 2 {
-                        theme::badge(ui, "Perlu minimal 2 PDF", theme::YELLOW);
-                    }
+                    ui.label(
+                        RichText::new(
+                            "Gambar akan diletakkan utuh di halaman kertas yang dipilih, PDF dipertahankan apa adanya, dan Word/ODT dikonversi lebih dulu.",
+                        )
+                        .size(10.5)
+                        .color(theme::dim()),
+                    );
+                    ui.add_space(8.0);
+                    ui.horizontal(|ui| {
+                        theme::badge(
+                            ui,
+                            &format!("{} file siap", self.convert.files.len()),
+                            if self.convert.files.is_empty() {
+                                theme::yellow()
+                            } else {
+                                theme::accent()
+                            },
+                        );
+                    });
                 }
                 ConvertOp::CompressImages => {
                     ui.label(
                         RichText::new("Sisi terpanjang (px) — 0 = pertahankan ukuran")
                             .size(11.0)
-                            .color(theme::MUTED),
+                            .color(theme::muted()),
                     );
                     ui.add(
                         egui::Slider::new(&mut self.convert.max_side, 0..=6000)
@@ -548,11 +580,11 @@ impl CetakinApp {
                     ui.label(
                         RichText::new("Kualitas JPEG/WebP")
                             .size(11.0)
-                            .color(theme::MUTED),
+                            .color(theme::muted()),
                     );
                     ui.add(egui::Slider::new(&mut self.convert.quality, 40..=100).suffix("%"));
                     ui.add_space(6.0);
-                    ui.label(RichText::new("Format").size(11.0).color(theme::MUTED));
+                    ui.label(RichText::new("Format").size(11.0).color(theme::muted()));
                     let mut fmt = match self.convert.format {
                         ResizeFormat::Jpeg => 0,
                         ResizeFormat::Png => 1,
@@ -571,7 +603,7 @@ impl CetakinApp {
 
     fn paper_orientation_controls(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Kertas").size(11.5).color(theme::MUTED));
+            ui.label(RichText::new("Kertas").size(11.5).color(theme::muted()));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 egui::ComboBox::from_id_salt("conv-paper")
                     .width(190.0)
@@ -585,7 +617,7 @@ impl CetakinApp {
         });
         ui.add_space(5.0);
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Orientasi").size(11.5).color(theme::MUTED));
+            ui.label(RichText::new("Orientasi").size(11.5).color(theme::muted()));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let mut sel = match self.convert.orientation {
                     PageOrientation::Portrait => 0,
@@ -605,7 +637,11 @@ impl CetakinApp {
     fn fit_dpi_controls(&mut self, ui: &mut egui::Ui) {
         ui.add_space(8.0);
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Isi halaman").size(11.5).color(theme::MUTED));
+            ui.label(
+                RichText::new("Isi halaman")
+                    .size(11.5)
+                    .color(theme::muted()),
+            );
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 egui::ComboBox::from_id_salt("conv-fit")
                     .width(170.0)
@@ -623,7 +659,7 @@ impl CetakinApp {
 
     fn dpi_segments(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Resolusi").size(11.5).color(theme::MUTED));
+            ui.label(RichText::new("Resolusi").size(11.5).color(theme::muted()));
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 let mut sel = match self.convert.pdf_dpi {
                     0..=180 => 0,
@@ -640,22 +676,22 @@ impl CetakinApp {
         ui.add_space(6.0);
         if self.tools.pdf_renderer().is_some() {
             ui.horizontal(|ui| {
-                theme::dot(ui, theme::ACCENT);
+                theme::dot(ui, theme::accent());
                 ui.label(
                     RichText::new("Renderer PDF siap (pdftoppm/mutool).")
                         .size(10.5)
-                        .color(theme::MUTED),
+                        .color(theme::muted()),
                 );
             });
         } else {
             ui.horizontal(|ui| {
-                theme::dot(ui, theme::YELLOW);
+                theme::dot(ui, theme::yellow());
                 ui.label(
                     RichText::new(
                         "Renderer PDF belum ada. Pasang Poppler (pdftoppm) atau MuPDF (mutool).",
                     )
                     .size(10.5)
-                    .color(theme::YELLOW),
+                    .color(theme::yellow()),
                 );
             });
         }
@@ -667,7 +703,7 @@ impl CetakinApp {
             ui.add_space(9.0);
 
             ui.horizontal(|ui| {
-                ui.label(RichText::new("Folder").size(11.0).color(theme::MUTED));
+                ui.label(RichText::new("Folder").size(11.0).color(theme::muted()));
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     if ui.small_button("Ubah").clicked() {
                         self.convert.pick_output_dir();
@@ -683,13 +719,13 @@ impl CetakinApp {
                     52,
                 ))
                 .size(10.5)
-                .color(theme::TEXT),
+                .color(theme::text()),
             );
 
             ui.add_space(8.0);
             ui.label(
                 RichText::new(match self.convert.op {
-                    ConvertOp::ImagesToPdf | ConvertOp::MergePdf => {
+                    ConvertOp::ImagesToPdf | ConvertOp::CombinePdf => {
                         "Anda akan diminta memilih nama file PDF saat menjalankan."
                     }
                     ConvertOp::PdfToDocx => "Nama DOCX mengikuti nama PDF sumber.",
@@ -698,7 +734,7 @@ impl CetakinApp {
                     ConvertOp::CompressImages => "Hasil diberi akhiran -kompres.",
                 })
                 .size(10.0)
-                .color(theme::DIM),
+                .color(theme::dim()),
             );
 
             ui.add_space(10.0);
@@ -711,7 +747,7 @@ impl CetakinApp {
                             .strong()
                             .color(Color32::WHITE),
                     )
-                    .fill(theme::ACCENT)
+                    .fill(theme::accent())
                     .stroke(Stroke::new(
                         1.0,
                         Color32::from_rgba_unmultiplied(255, 255, 255, 60),
@@ -729,7 +765,7 @@ impl CetakinApp {
                 ui.label(
                     RichText::new("Tambahkan file sumber terlebih dahulu.")
                         .size(10.0)
-                        .color(theme::DIM),
+                        .color(theme::dim()),
                 );
             }
         });
@@ -751,7 +787,7 @@ impl CetakinApp {
                 ui.label(
                     RichText::new(&self.convert.note)
                         .size(10.5)
-                        .color(theme::MUTED),
+                        .color(theme::muted()),
                 );
             }
             ui.add_space(6.0);
@@ -765,14 +801,14 @@ impl CetakinApp {
                         } else {
                             theme::Icon::Page
                         },
-                        theme::ACCENT,
+                        theme::accent(),
                         1.3,
                     );
                     ui.add_space(18.0);
                     ui.label(
                         RichText::new(path.file_name().and_then(|n| n.to_str()).unwrap_or("hasil"))
                             .size(11.5)
-                            .color(theme::TEXT),
+                            .color(theme::text()),
                     );
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui.small_button("Buka").clicked() {
@@ -821,14 +857,6 @@ impl CetakinApp {
             );
             return;
         }
-        if self.convert.op == ConvertOp::MergePdf && files.len() < 2 {
-            self.toast_error(
-                "Perlu dua PDF",
-                "Tambahkan minimal dua file PDF untuk digabung.",
-            );
-            return;
-        }
-
         let outdir = self.convert.effective_output_dir();
         let op = self.convert.op;
         let dpi = self.convert.pdf_dpi;
@@ -972,21 +1000,23 @@ impl CetakinApp {
                     })
                 });
             }
-            ConvertOp::MergePdf => {
-                let Some(path) = save_pdf_dialog("cetakin-gabungan.pdf") else {
+            ConvertOp::CombinePdf => {
+                let Some(path) = save_pdf_dialog("cetakin-combine.pdf") else {
                     return;
                 };
                 let output = path.clone();
+                let settings = self.settings.clone();
                 let count = files.len();
-                self.start_job("Menggabung PDF", JobTag::Convert, move |ctx| {
+                self.start_job("Combine ke PDF", JobTag::Convert, move |ctx| {
                     let mut cb = {
                         let ctx = ctx.clone();
                         move |p: f32, m: &str| ctx.progress(p, m)
                     };
-                    let outcome = convert::merge_pdfs(&files, &output, &mut cb)?;
+                    let outcome =
+                        convert::combine_to_pdf(&files, &output, &settings, dpi, &tools, &mut cb)?;
                     Ok(JobResult {
-                        title: "PDF berhasil digabung".to_string(),
-                        note: format!("{} PDF. {}", count, outcome.note),
+                        title: "PDF berhasil dibuat".to_string(),
+                        note: format!("{count} file · {}", outcome.note),
                         files: outcome.files,
                     })
                 });
@@ -1043,11 +1073,11 @@ fn shorten(text: &str, max: usize) -> String {
 fn op_card(ui: &mut egui::Ui, op: ConvertOp, selected: bool, width: f32) -> bool {
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 68.0), Sense::click());
     let fill = if selected {
-        theme::ACCENT_SOFT
+        theme::accent_soft()
     } else if response.hovered() {
-        theme::CARD_HOVER
+        theme::card_hover()
     } else {
-        theme::INPUT
+        theme::input()
     };
     ui.painter().rect_filled(rect, CornerRadius::same(11), fill);
     ui.painter().rect_stroke(
@@ -1056,9 +1086,9 @@ fn op_card(ui: &mut egui::Ui, op: ConvertOp, selected: bool, width: f32) -> bool
         Stroke::new(
             if selected { 1.4 } else { 1.0 },
             if selected {
-                theme::ACCENT
+                theme::accent()
             } else {
-                theme::BORDER_SOFT
+                theme::border_soft()
             },
         ),
         StrokeKind::Inside,
@@ -1073,13 +1103,13 @@ fn op_card(ui: &mut egui::Ui, op: ConvertOp, selected: bool, width: f32) -> bool
             ConvertOp::PdfToImages => theme::Icon::Download,
             ConvertOp::PdfToDocx => theme::Icon::Page,
             ConvertOp::DocxToPdf => theme::Icon::Convert,
-            ConvertOp::MergePdf => theme::Icon::Folder,
+            ConvertOp::CombinePdf => theme::Icon::Stack,
             ConvertOp::CompressImages => theme::Icon::Tools,
         },
         if selected {
-            theme::ACCENT
+            theme::accent()
         } else {
-            theme::MUTED
+            theme::muted()
         },
         1.4,
     );
@@ -1088,20 +1118,28 @@ fn op_card(ui: &mut egui::Ui, op: ConvertOp, selected: bool, width: f32) -> bool
         egui::Align2::LEFT_CENTER,
         op.title(),
         FontId::proportional(12.0),
-        if selected { theme::TEXT } else { theme::TEXT },
+        if selected {
+            theme::text()
+        } else {
+            theme::text()
+        },
     );
     ui.painter().text(
         rect.left_top() + Vec2::new(12.0, 42.0),
         egui::Align2::LEFT_CENTER,
         shorten(op.description(), 24),
         FontId::proportional(9.5),
-        if selected { theme::MUTED } else { theme::DIM },
+        if selected {
+            theme::muted()
+        } else {
+            theme::dim()
+        },
     );
     if selected {
         ui.painter().circle_filled(
             rect.right_top() + Vec2::new(-13.0, 13.0),
             3.5,
-            theme::ACCENT,
+            theme::accent(),
         );
     }
     response.clicked()

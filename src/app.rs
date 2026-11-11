@@ -230,7 +230,6 @@ pub struct CetakinApp {
 
 impl CetakinApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        theme::apply(&cc.egui_ctx);
         let prefs_path = prefs_path();
         let prefs: Option<Prefs> = std::fs::read_to_string(&prefs_path)
             .ok()
@@ -239,6 +238,10 @@ impl CetakinApp {
         let settings = prefs.as_ref().map(|p| p.sheet.clone()).unwrap_or_default();
         let studio = prefs.as_ref().map(|p| p.studio.clone()).unwrap_or_default();
         let last_dir = prefs.and_then(|p| p.last_dir);
+
+        // Aplikasi selalu memakai tema gelap.
+        theme::set_dark(true);
+        theme::apply(&cc.egui_ctx);
 
         Self {
             tab: Tab::Sheet,
@@ -741,7 +744,7 @@ impl CetakinApp {
             let size = Vec2::splat(38.0);
             let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
             ui.painter()
-                .rect_filled(rect, CornerRadius::same(11), theme::ACCENT);
+                .rect_filled(rect, CornerRadius::same(11), theme::accent());
             ui.painter().rect_stroke(
                 rect,
                 CornerRadius::same(11),
@@ -761,12 +764,12 @@ impl CetakinApp {
                     RichText::new("cetakin.")
                         .size(21.0)
                         .strong()
-                        .color(theme::TEXT),
+                        .color(theme::text()),
                 );
                 ui.label(
                     RichText::new("digital printing")
                         .size(10.0)
-                        .color(theme::DIM),
+                        .color(theme::dim()),
                 );
             });
         });
@@ -803,7 +806,7 @@ impl CetakinApp {
         if selected {
             // Baris terpilih: kaca biru lembut khas sidebar Tahoe.
             ui.painter()
-                .rect_filled(rect, CornerRadius::same(11), theme::ACCENT_SOFT);
+                .rect_filled(rect, CornerRadius::same(11), theme::accent_soft());
             ui.painter().rect_stroke(
                 rect,
                 CornerRadius::same(11),
@@ -812,7 +815,7 @@ impl CetakinApp {
             );
         } else if hovered {
             ui.painter()
-                .rect_filled(rect, CornerRadius::same(11), theme::CARD_HOVER);
+                .rect_filled(rect, CornerRadius::same(11), theme::card_hover());
         }
         let icon_rect = egui::Rect::from_center_size(
             egui::pos2(rect.left() + 23.0, rect.center().y),
@@ -822,7 +825,11 @@ impl CetakinApp {
             ui.painter(),
             icon_rect,
             icon,
-            if selected { theme::TEXT } else { theme::MUTED },
+            if selected {
+                theme::text()
+            } else {
+                theme::muted()
+            },
             1.5,
         );
         ui.painter().text(
@@ -830,7 +837,11 @@ impl CetakinApp {
             Align2::LEFT_CENTER,
             label,
             FontId::proportional(14.0),
-            if selected { theme::TEXT } else { theme::MUTED },
+            if selected {
+                theme::text()
+            } else {
+                theme::muted()
+            },
         );
         response.clicked()
     }
@@ -855,19 +866,19 @@ impl CetakinApp {
             ),
         };
         egui::Frame::new()
-            .fill(theme::CARD)
+            .fill(theme::card_fill())
             .corner_radius(CornerRadius::same(14))
-            .stroke(Stroke::new(1.0, theme::BORDER_SOFT))
+            .stroke(Stroke::new(1.0, theme::border_soft()))
             .inner_margin(Margin::same(14))
             .show(ui, |ui| {
                 ui.label(
                     RichText::new(title)
                         .size(12.5)
                         .strong()
-                        .color(theme::ACCENT),
+                        .color(theme::accent()),
                 );
                 ui.add_space(4.0);
-                ui.label(RichText::new(body).size(11.5).color(theme::MUTED));
+                ui.label(RichText::new(body).size(11.5).color(theme::muted()));
             });
     }
 
@@ -875,17 +886,21 @@ impl CetakinApp {
         ui.horizontal(|ui| {
             if self.job.is_some() {
                 ui.spinner();
-                ui.label(RichText::new("Memproses…").size(11.5).color(theme::YELLOW));
+                ui.label(
+                    RichText::new("Memproses…")
+                        .size(11.5)
+                        .color(theme::yellow()),
+                );
             } else {
-                theme::dot(ui, theme::ACCENT);
+                theme::dot(ui, theme::accent());
                 ui.label(
                     RichText::new("Siap mencetak")
                         .size(11.5)
-                        .color(theme::MUTED),
+                        .color(theme::muted()),
                 );
             }
         });
-        ui.label(RichText::new("v0.1.0").size(10.0).color(theme::DIM));
+        ui.label(RichText::new("v0.1.0").size(10.0).color(theme::dim()));
     }
 
     fn header(&mut self, ui: &mut egui::Ui) {
@@ -896,12 +911,12 @@ impl CetakinApp {
                     RichText::new(self.tab.title())
                         .size(24.0)
                         .strong()
-                        .color(theme::TEXT),
+                        .color(theme::text()),
                 );
                 ui.label(
                     RichText::new(self.tab.subtitle())
                         .size(12.0)
-                        .color(theme::MUTED),
+                        .color(theme::muted()),
                 );
             });
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| match self.tab {
@@ -972,12 +987,12 @@ impl CetakinApp {
         };
 
         let (accent, compact_width, expanded_height, force_open) = match &content {
-            IslandContent::Job { .. } => (theme::ACCENT, 262.0, 124.0, false),
+            IslandContent::Job { .. } => (theme::accent(), 262.0, 124.0, false),
             IslandContent::Toast { kind, .. } => {
                 let color = match kind {
-                    ToastKind::Success => theme::ACCENT,
-                    ToastKind::Error => theme::RED,
-                    ToastKind::Info => theme::BLUE,
+                    ToastKind::Success => theme::accent(),
+                    ToastKind::Error => theme::red(),
+                    ToastKind::Info => theme::blue(),
                 };
                 let force_open = *kind == ToastKind::Error;
                 (
@@ -1022,16 +1037,16 @@ impl CetakinApp {
                         ..
                     }
                 ) {
-                    theme::RED
+                    theme::red()
                 } else if t > 0.5 {
                     accent
                 } else {
-                    theme::BORDER
+                    theme::border()
                 };
                 ui.painter().rect(
                     rect,
                     corner,
-                    theme::ISLAND,
+                    theme::island(),
                     Stroke::new(1.0, border),
                     StrokeKind::Inside,
                 );
@@ -1042,7 +1057,7 @@ impl CetakinApp {
                 );
                 if gloss.width() > 0.0 {
                     ui.painter()
-                        .rect_filled(gloss, CornerRadius::same(1), theme::GLASS_TOP);
+                        .rect_filled(gloss, CornerRadius::same(1), theme::glass_top());
                 }
 
                 let inner = rect.shrink2(egui::vec2(14.0 + 2.0 * t, 9.0 + 3.0 * t));
@@ -1068,7 +1083,7 @@ impl CetakinApp {
                             };
                             ui.add(
                                 egui::Label::new(
-                                    RichText::new(text).size(13.0).strong().color(theme::TEXT),
+                                    RichText::new(text).size(13.0).strong().color(theme::text()),
                                 )
                                 .truncate(),
                             );
@@ -1077,14 +1092,14 @@ impl CetakinApp {
                             child.add_space(7.0 * t);
                             child.add(
                                 egui::ProgressBar::new(*progress)
-                                    .fill(theme::ACCENT)
+                                    .fill(theme::accent())
                                     .corner_radius(4)
                                     .desired_height(8.0),
                             );
                             child.add_space(3.0);
                             child.add(
                                 egui::Label::new(
-                                    RichText::new(message).size(11.0).color(theme::MUTED),
+                                    RichText::new(message).size(11.0).color(theme::muted()),
                                 )
                                 .wrap(),
                             );
@@ -1100,7 +1115,10 @@ impl CetakinApp {
                             theme::dot(ui, accent);
                             ui.add(
                                 egui::Label::new(
-                                    RichText::new(title).size(12.5).strong().color(theme::TEXT),
+                                    RichText::new(title)
+                                        .size(12.5)
+                                        .strong()
+                                        .color(theme::text()),
                                 )
                                 .truncate(),
                             );
@@ -1109,7 +1127,7 @@ impl CetakinApp {
                             child.add_space(4.0);
                             child.add(
                                 egui::Label::new(
-                                    RichText::new(detail).size(11.0).color(theme::MUTED),
+                                    RichText::new(detail).size(11.0).color(theme::muted()),
                                 )
                                 .wrap(),
                             );
@@ -1119,7 +1137,7 @@ impl CetakinApp {
                             child.label(
                                 RichText::new("Klik untuk menutup")
                                     .size(10.0)
-                                    .color(theme::DIM),
+                                    .color(theme::dim()),
                             );
                         }
                     }
@@ -1181,8 +1199,8 @@ impl eframe::App for CetakinApp {
             .resizable(false)
             .frame(
                 egui::Frame::new()
-                    .fill(theme::SIDEBAR)
-                    .stroke(Stroke::new(1.0, theme::BORDER_SOFT))
+                    .fill(theme::sidebar())
+                    .stroke(Stroke::new(1.0, theme::border_soft()))
                     .inner_margin(Margin {
                         left: 18,
                         right: 18,
@@ -1224,7 +1242,7 @@ impl eframe::App for CetakinApp {
     }
 
     fn clear_color(&self, _visuals: &egui::Visuals) -> [f32; 4] {
-        theme::BG.to_normalized_gamma_f32()
+        theme::bg().to_normalized_gamma_f32()
     }
 }
 
@@ -1235,8 +1253,13 @@ impl eframe::App for CetakinApp {
 pub fn card_title(ui: &mut egui::Ui, icon: theme::Icon, title: &str) {
     ui.horizontal(|ui| {
         let (rect, _) = ui.allocate_exact_size(Vec2::splat(18.0), egui::Sense::hover());
-        theme::icon(ui.painter(), rect, icon, theme::ACCENT, 1.5);
-        ui.label(RichText::new(title).size(13.5).strong().color(theme::TEXT));
+        theme::icon(ui.painter(), rect, icon, theme::accent(), 1.5);
+        ui.label(
+            RichText::new(title)
+                .size(13.5)
+                .strong()
+                .color(theme::text()),
+        );
     });
 }
 
@@ -1257,9 +1280,9 @@ pub fn drag_cm(ui: &mut egui::Ui, value_mm: &mut f32, width: f32) {
 
 pub fn label_value(ui: &mut egui::Ui, label: &str, value: &str) {
     ui.horizontal(|ui| {
-        ui.label(RichText::new(label).size(11.5).color(theme::MUTED));
+        ui.label(RichText::new(label).size(11.5).color(theme::muted()));
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            ui.label(RichText::new(value).size(11.5).color(theme::TEXT));
+            ui.label(RichText::new(value).size(11.5).color(theme::text()));
         });
     });
 }

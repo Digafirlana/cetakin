@@ -27,7 +27,7 @@ Dibuat dengan **Rust + eframe/egui** (renderer glow/OpenGL). Berjalan di **Windo
 - **PDF → PNG** (render 150/300/600 DPI, rentang halaman opsional).
 - **PDF → Word** (teks yang bisa diedit + gambar halaman opsional).
 - **Word → PDF** (LibreOffice; fallback renderer teks bawaan).
-- **Gabung PDF** dengan pengurutan file.
+- **Combine menjadi PDF** — gabungkan gambar, PDF, dan Word/ODT (bisa campur) menjadi satu PDF sesuai urutan.
 - **Kompres gambar** (resize sisi terpanjang, kualitas, JPEG/PNG/WebP).
 - Daftar file drag & drop, folder output, progress non-blocking, hasil bisa langsung dibuka.
 
@@ -38,7 +38,7 @@ Dibuat dengan **Rust + eframe/egui** (renderer glow/OpenGL). Berjalan di **Windo
 - **Status komponen pendukung** (LibreOffice, Poppler, MuPDF, ImageMagick, CUPS).
 
 ### 4. Antarmuka
-- **Tema macOS Tahoe (Liquid Glass)**: latar bergradasi, panel kaca transparan,
+- **Tema macOS Tahoe (Liquid Glass)**: latar bergradasi gelap, panel kaca transparan,
   aksen biru sistem Apple, sudut membulat besar, dan scrollbar mengambang.
 - **Dynamic Island** di tengah atas: progress job serta toast sukses/error/info.
 - Ringkas saat berjalan, membesar saat hover/klik; error tetap terbuka sampai ditutup.
