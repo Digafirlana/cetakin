@@ -1,244 +1,487 @@
 use eframe::egui::{
     self, Color32, CornerRadius, FontId, Margin, RichText, Stroke, StrokeKind, Vec2,
 };
+use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 // ---------------------------------------------------------------------------
-// macOS Tahoe — Liquid Glass Dark
+// Palet tema
 // ---------------------------------------------------------------------------
 //
-// Palet mengacu pada macOS 26 "Tahoe" Human Interface Guidelines:
-//   • Background: lapisan Abu-abu gelap dengan nilai vibrancy (efek kaca)
-//   • Sidebar    : glass putih sangat tipis di atas bg (seperti NSSidebar)
-//   • Card       : "Glass fill" — putih transparan rendah + highlight atas
-//   • Accent     : Biru sistem Apple  (#007AFF / macOS blue)
-//   • Traffic-light: merah #FF5F57 · kuning #FFBD2E · hijau #28C840
-//   • Typography : SF Pro Display / SF Pro Text — diwakili proporsional egui
+// Aplikasi memakai Catppuccin sebagai tema utama:
+//   • Frappé    — gelap kebiruan
+//   • Macchiato — gelap keunguan
+//   • Mocha     — gelap pekat (tampilan bawaan)
+//
+// "Tahoe" disimpan sebagai tema gelap alternatif bergaya macOS.
+// Palet resmi: https://catppuccin.com/palette
 
-// ── Tema gelap (aplikasi selalu memakai mode gelap) ────────────────────────
-use std::sync::atomic::{AtomicBool, Ordering};
-
-static DARK_MODE: AtomicBool = AtomicBool::new(true);
-
-/// Tetapkan mode tampilan. Saat ini aplikasi selalu memakai mode gelap.
-pub fn set_dark(dark: bool) {
-    DARK_MODE.store(dark, Ordering::Relaxed);
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Flavor {
+    Frappe,
+    Macchiato,
+    /// Tema bawaan. Alias menjaga preferensi lama yang masih menyimpan "latte".
+    #[default]
+    #[serde(alias = "latte")]
+    Mocha,
+    Tahoe,
 }
 
-pub fn is_dark() -> bool {
-    DARK_MODE.load(Ordering::Relaxed)
-}
+impl Flavor {
+    pub const ALL: [Flavor; 4] = [
+        Flavor::Frappe,
+        Flavor::Macchiato,
+        Flavor::Mocha,
+        Flavor::Tahoe,
+    ];
 
-/// Pilih warna sesuai mode aktif.
-#[inline]
-fn pick(dark: Color32, light: Color32) -> Color32 {
-    if is_dark() {
-        dark
-    } else {
-        light
+    pub fn label(self) -> &'static str {
+        match self {
+            Flavor::Frappe => "Catppuccin Frappé",
+            Flavor::Macchiato => "Catppuccin Macchiato",
+            Flavor::Mocha => "Catppuccin Mocha",
+            Flavor::Tahoe => "Tahoe Gelap",
+        }
+    }
+
+    pub fn short_label(self) -> &'static str {
+        match self {
+            Flavor::Frappe => "Frappé",
+            Flavor::Macchiato => "Macchiato",
+            Flavor::Mocha => "Mocha",
+            Flavor::Tahoe => "Tahoe",
+        }
+    }
+
+    pub fn tagline(self) -> &'static str {
+        match self {
+            Flavor::Frappe => "Gelap kebiruan",
+            Flavor::Macchiato => "Gelap keunguan",
+            Flavor::Mocha => "Gelap pekat",
+            Flavor::Tahoe => "Kaca macOS",
+        }
+    }
+
+    fn index(self) -> usize {
+        match self {
+            Flavor::Frappe => 0,
+            Flavor::Macchiato => 1,
+            Flavor::Mocha => 2,
+            Flavor::Tahoe => 3,
+        }
+    }
+
+    fn from_index(i: usize) -> Flavor {
+        Self::ALL.get(i).copied().unwrap_or(Flavor::Mocha)
     }
 }
 
-// ── Catppuccin Mocha ───────────────────────────────────────────────────────
-// Palet resmi https://catppuccin.com/palette — dipakai untuk Dynamic Island
-// (notifikasi & progress) agar tampil konsisten dan lembut.
-#[allow(dead_code)] // palet lengkap disimpan agar mudah dipakai komponen lain
-pub mod catppuccin {
-    use super::Color32;
+static FLAVOR: AtomicUsize = AtomicUsize::new(2);
 
-    pub const ROSEWATER: Color32 = Color32::from_rgb(0xf5, 0xe0, 0xdc);
-    pub const FLAMINGO: Color32 = Color32::from_rgb(0xf2, 0xcd, 0xcd);
-    pub const PINK: Color32 = Color32::from_rgb(0xf5, 0xc2, 0xe7);
-    pub const MAUVE: Color32 = Color32::from_rgb(0xcb, 0xa6, 0xf7);
-    pub const RED: Color32 = Color32::from_rgb(0xf3, 0x8b, 0xa8);
-    pub const MAROON: Color32 = Color32::from_rgb(0xeb, 0xa0, 0xac);
-    pub const PEACH: Color32 = Color32::from_rgb(0xfa, 0xb3, 0x87);
-    pub const YELLOW: Color32 = Color32::from_rgb(0xf9, 0xe2, 0xaf);
-    pub const GREEN: Color32 = Color32::from_rgb(0xa6, 0xe3, 0xa1);
-    pub const TEAL: Color32 = Color32::from_rgb(0x94, 0xe2, 0xd5);
-    pub const SKY: Color32 = Color32::from_rgb(0x89, 0xdc, 0xeb);
-    pub const SAPPHIRE: Color32 = Color32::from_rgb(0x74, 0xc7, 0xec);
-    pub const BLUE: Color32 = Color32::from_rgb(0x89, 0xb4, 0xfa);
-    pub const LAVENDER: Color32 = Color32::from_rgb(0xb4, 0xbe, 0xfe);
-    pub const TEXT: Color32 = Color32::from_rgb(0xcd, 0xd6, 0xf4);
-    pub const SUBTEXT1: Color32 = Color32::from_rgb(0xba, 0xc2, 0xde);
-    pub const SUBTEXT0: Color32 = Color32::from_rgb(0xa6, 0xad, 0xc8);
-    pub const OVERLAY2: Color32 = Color32::from_rgb(0x93, 0x99, 0xb2);
-    pub const OVERLAY1: Color32 = Color32::from_rgb(0x7f, 0x84, 0x9c);
-    pub const OVERLAY0: Color32 = Color32::from_rgb(0x6c, 0x70, 0x86);
-    pub const SURFACE2: Color32 = Color32::from_rgb(0x58, 0x5b, 0x70);
-    pub const SURFACE1: Color32 = Color32::from_rgb(0x45, 0x47, 0x5a);
-    pub const SURFACE0: Color32 = Color32::from_rgb(0x31, 0x32, 0x44);
-    pub const BASE: Color32 = Color32::from_rgb(0x1e, 0x1e, 0x2e);
-    pub const MANTLE: Color32 = Color32::from_rgb(0x18, 0x18, 0x25);
-    pub const CRUST: Color32 = Color32::from_rgb(0x11, 0x11, 0x1b);
+pub fn flavor() -> Flavor {
+    Flavor::from_index(FLAVOR.load(Ordering::Relaxed))
+}
+
+pub fn set_flavor(f: Flavor) {
+    FLAVOR.store(f.index(), Ordering::Relaxed);
+}
+
+pub fn is_dark() -> bool {
+    palette().dark
+}
+
+#[inline]
+const fn rgb(hex: u32) -> Color32 {
+    Color32::from_rgb(
+        ((hex >> 16) & 0xff) as u8,
+        ((hex >> 8) & 0xff) as u8,
+        (hex & 0xff) as u8,
+    )
+}
+
+#[inline]
+fn alpha(color: Color32, a: u8) -> Color32 {
+    Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), a)
+}
+
+/// Seluruh warna yang dipakai UI. Dihitung ringan setiap pemanggilan.
+#[derive(Clone, Copy)]
+pub struct Palette {
+    pub dark: bool,
+    pub bg: Color32,
+    pub bg_top: Color32,
+    pub bg_bottom: Color32,
+    pub glow: Color32,
+    pub sidebar: Color32,
+    pub card: Color32,
+    pub card_hover: Color32,
+    pub input: Color32,
+    pub canvas: Color32,
+    pub border: Color32,
+    pub border_soft: Color32,
+    pub shadow: Color32,
+    pub text: Color32,
+    pub muted: Color32,
+    pub dim: Color32,
+    pub accent: Color32,
+    pub accent_soft: Color32,
+    pub on_accent: Color32,
+    pub yellow: Color32,
+    pub orange: Color32,
+    pub red: Color32,
+    pub blue: Color32,
+    pub green: Color32,
+    pub hero_top: Color32,
+    pub hero_bottom: Color32,
+    pub hero_glow: Color32,
+    pub hero_text: Color32,
+    pub hero_muted: Color32,
+    pub hero_card: Color32,
+    pub hero_card_border: Color32,
+    pub nav_active_bg: Color32,
+    pub nav_active_fg: Color32,
+    pub island: Color32,
+    pub island_border: Color32,
+    pub island_text: Color32,
+    pub island_muted: Color32,
+    pub island_dim: Color32,
+    pub island_field: Color32,
+}
+
+const FRAPPE: Palette = Palette {
+    dark: true,
+    bg: rgb(0x303446),
+    bg_top: rgb(0x363a4f),
+    bg_bottom: rgb(0x232634),
+    glow: rgb(0xca9ee6),
+    sidebar: rgb(0x292c3c),
+    card: rgb(0x414559),
+    card_hover: rgb(0x51576d),
+    input: rgb(0x363a4f),
+    canvas: rgb(0x232634),
+    border: Color32::from_rgba_premultiplied(198, 208, 245, 22),
+    border_soft: Color32::from_rgba_premultiplied(198, 208, 245, 12),
+    shadow: Color32::from_black_alpha(70),
+    text: rgb(0xc6d0f5),
+    muted: rgb(0xa5adce),
+    dim: rgb(0x838ba7),
+    accent: rgb(0xca9ee6),
+    accent_soft: Color32::from_rgba_premultiplied(202, 158, 230, 34),
+    on_accent: rgb(0x232634),
+    yellow: rgb(0xe5c890),
+    orange: rgb(0xef9f76),
+    red: rgb(0xe78284),
+    blue: rgb(0x8caaee),
+    green: rgb(0xa6d189),
+    hero_top: rgb(0x191c26),
+    hero_bottom: rgb(0x292c3c),
+    hero_glow: rgb(0xca9ee6),
+    hero_text: rgb(0xf2f4ff),
+    hero_muted: rgb(0xb5bfe2),
+    hero_card: rgb(0x414559),
+    hero_card_border: Color32::from_rgba_premultiplied(198, 208, 245, 24),
+    nav_active_bg: rgb(0xca9ee6),
+    nav_active_fg: rgb(0x232634),
+    island: rgb(0x232634),
+    island_border: rgb(0x51576d),
+    island_text: rgb(0xc6d0f5),
+    island_muted: rgb(0xa5adce),
+    island_dim: rgb(0x838ba7),
+    island_field: rgb(0x414559),
+};
+
+const MACCHIATO: Palette = Palette {
+    dark: true,
+    bg: rgb(0x24273a),
+    bg_top: rgb(0x2a2e44),
+    bg_bottom: rgb(0x181926),
+    glow: rgb(0xc6a0f6),
+    sidebar: rgb(0x1e2030),
+    card: rgb(0x363a4f),
+    card_hover: rgb(0x494d64),
+    input: rgb(0x2a2e44),
+    canvas: rgb(0x181926),
+    border: Color32::from_rgba_premultiplied(202, 211, 245, 22),
+    border_soft: Color32::from_rgba_premultiplied(202, 211, 245, 12),
+    shadow: Color32::from_black_alpha(76),
+    text: rgb(0xcad3f5),
+    muted: rgb(0xa5adcb),
+    dim: rgb(0x8087a2),
+    accent: rgb(0xc6a0f6),
+    accent_soft: Color32::from_rgba_premultiplied(198, 160, 246, 34),
+    on_accent: rgb(0x181926),
+    yellow: rgb(0xeed49f),
+    orange: rgb(0xf5a97f),
+    red: rgb(0xed8796),
+    blue: rgb(0x8aadf4),
+    green: rgb(0xa6da95),
+    hero_top: rgb(0x14151f),
+    hero_bottom: rgb(0x24273a),
+    hero_glow: rgb(0xc6a0f6),
+    hero_text: rgb(0xf0f2ff),
+    hero_muted: rgb(0xb8c0e0),
+    hero_card: rgb(0x363a4f),
+    hero_card_border: Color32::from_rgba_premultiplied(202, 211, 245, 24),
+    nav_active_bg: rgb(0xc6a0f6),
+    nav_active_fg: rgb(0x181926),
+    island: rgb(0x181926),
+    island_border: rgb(0x494d64),
+    island_text: rgb(0xcad3f5),
+    island_muted: rgb(0xa5adcb),
+    island_dim: rgb(0x8087a2),
+    island_field: rgb(0x363a4f),
+};
+
+const MOCHA: Palette = Palette {
+    dark: true,
+    bg: rgb(0x1e1e2e),
+    bg_top: rgb(0x252537),
+    bg_bottom: rgb(0x11111b),
+    glow: rgb(0xcba6f7),
+    sidebar: rgb(0x181825),
+    card: rgb(0x313244),
+    card_hover: rgb(0x45475a),
+    input: rgb(0x252537),
+    canvas: rgb(0x11111b),
+    border: Color32::from_rgba_premultiplied(205, 214, 244, 22),
+    border_soft: Color32::from_rgba_premultiplied(205, 214, 244, 12),
+    shadow: Color32::from_black_alpha(82),
+    text: rgb(0xcdd6f4),
+    muted: rgb(0xa6adc8),
+    dim: rgb(0x7f849c),
+    accent: rgb(0xcba6f7),
+    accent_soft: Color32::from_rgba_premultiplied(203, 166, 247, 34),
+    on_accent: rgb(0x11111b),
+    yellow: rgb(0xf9e2af),
+    orange: rgb(0xfab387),
+    red: rgb(0xf38ba8),
+    blue: rgb(0x89b4fa),
+    green: rgb(0xa6e3a1),
+    hero_top: rgb(0x12121b),
+    hero_bottom: rgb(0x1e1e2e),
+    hero_glow: rgb(0xcba6f7),
+    hero_text: rgb(0xf2f4ff),
+    hero_muted: rgb(0xbac2de),
+    hero_card: rgb(0x313244),
+    hero_card_border: Color32::from_rgba_premultiplied(205, 214, 244, 24),
+    nav_active_bg: rgb(0xcba6f7),
+    nav_active_fg: rgb(0x11111b),
+    island: rgb(0x11111b),
+    island_border: rgb(0x45475a),
+    island_text: rgb(0xcdd6f4),
+    island_muted: rgb(0xa6adc8),
+    island_dim: rgb(0x7f849c),
+    island_field: rgb(0x313244),
+};
+
+const TAHOE: Palette = Palette {
+    dark: true,
+    bg: rgb(0x1c1c1e),
+    bg_top: rgb(0x28282e),
+    bg_bottom: rgb(0x131316),
+    glow: rgb(0x0a84ff),
+    sidebar: Color32::from_rgba_premultiplied(16, 16, 16, 16),
+    card: Color32::from_rgba_premultiplied(20, 20, 20, 20),
+    card_hover: Color32::from_rgba_premultiplied(34, 34, 34, 34),
+    input: Color32::from_rgba_premultiplied(0, 0, 0, 90),
+    canvas: Color32::from_rgba_premultiplied(0, 0, 0, 110),
+    border: Color32::from_rgba_premultiplied(30, 30, 30, 30),
+    border_soft: Color32::from_rgba_premultiplied(16, 16, 16, 16),
+    shadow: Color32::from_black_alpha(58),
+    text: rgb(0xf5f5f7),
+    muted: Color32::from_rgba_premultiplied(150, 150, 150, 150),
+    dim: Color32::from_rgba_premultiplied(96, 96, 96, 96),
+    accent: rgb(0x0a84ff),
+    accent_soft: Color32::from_rgba_premultiplied(2, 29, 56, 56),
+    on_accent: rgb(0xffffff),
+    yellow: rgb(0xffd60a),
+    orange: rgb(0xff9500),
+    red: rgb(0xff3b30),
+    blue: rgb(0x0a84ff),
+    green: rgb(0x28c840),
+    hero_top: rgb(0x101014),
+    hero_bottom: rgb(0x1d1d24),
+    hero_glow: rgb(0x0a84ff),
+    hero_text: rgb(0xf5f5f7),
+    hero_muted: rgb(0xa6a6ad),
+    hero_card: Color32::from_rgba_premultiplied(34, 34, 38, 235),
+    hero_card_border: Color32::from_rgba_premultiplied(255, 255, 255, 20),
+    nav_active_bg: rgb(0xf5f5f7),
+    nav_active_fg: rgb(0x1c1c1e),
+    island: rgb(0x11111b),
+    island_border: rgb(0x45475a),
+    island_text: rgb(0xcdd6f4),
+    island_muted: rgb(0xa6adc8),
+    island_dim: rgb(0x7f849c),
+    island_field: rgb(0x313244),
+};
+
+fn palette_for(f: Flavor) -> Palette {
+    match f {
+        Flavor::Frappe => FRAPPE,
+        Flavor::Macchiato => MACCHIATO,
+        Flavor::Mocha => MOCHA,
+        Flavor::Tahoe => TAHOE,
+    }
+}
+
+#[inline]
+pub fn palette() -> Palette {
+    palette_for(flavor())
+}
+
+/// Tiga warna contoh untuk chip pemilih tema.
+pub fn swatches(f: Flavor) -> [Color32; 3] {
+    let p = palette_for(f);
+    [p.bg_top, p.card_hover, p.accent]
 }
 
 // ── Latar & panel ──────────────────────────────────────────────────────────
-/// Latar utama: abu gelap hangat (mode gelap) atau abu terang macOS.
 pub fn bg() -> Color32 {
-    pick(
-        Color32::from_rgb(28, 28, 30),
-        Color32::from_rgb(242, 242, 247),
-    )
+    palette().bg
 }
-/// Ujung atas gradasi latar — sedikit lebih terang (cahaya ruangan).
 pub fn bg_top() -> Color32 {
-    pick(
-        Color32::from_rgb(40, 40, 46),
-        Color32::from_rgb(252, 252, 254),
-    )
+    palette().bg_top
 }
-/// Ujung bawah gradasi latar — lebih dalam agar panel kaca terasa melayang.
 pub fn bg_bottom() -> Color32 {
-    pick(
-        Color32::from_rgb(19, 19, 22),
-        Color32::from_rgb(226, 226, 233),
-    )
+    palette().bg_bottom
 }
 
-/// Sidebar: putih sangat transparan — efek "liquid glass" sidebar macOS.
+/// Sidebar: panel melayang bernuansa sesuai tema.
 pub fn sidebar() -> Color32 {
-    pick(
-        Color32::from_rgba_premultiplied(16, 16, 16, 16),
-        Color32::from_rgba_unmultiplied(255, 255, 255, 150),
-    )
+    palette().sidebar
 }
 
-/// Fill kartu (NSVisualEffectView Material Popover).
+/// Fill kartu.
 pub fn card_fill() -> Color32 {
-    pick(
-        Color32::from_rgba_premultiplied(20, 20, 20, 20),
-        Color32::from_rgba_unmultiplied(255, 255, 255, 205),
-    )
+    palette().card
 }
 
-/// Kartu saat di-hover — sedikit lebih terang.
 pub fn card_hover() -> Color32 {
-    pick(
-        Color32::from_rgba_premultiplied(34, 34, 34, 34),
-        Color32::from_rgba_unmultiplied(255, 255, 255, 235),
-    )
+    palette().card_hover
 }
 
-/// Input field — lebih gelap dari kartu agar menyatu dengan tema gelap.
+/// Input field.
 pub fn input() -> Color32 {
-    pick(
-        Color32::from_rgba_premultiplied(0, 0, 0, 90),
-        Color32::from_rgba_unmultiplied(255, 255, 255, 235),
-    )
+    palette().input
 }
 
-/// Latar meja kerja pratinjau — tetap kontras dengan kertas putih.
+/// Latar meja kerja pratinjau.
 pub fn canvas() -> Color32 {
-    pick(
-        Color32::from_rgba_unmultiplied(0, 0, 0, 110),
-        Color32::from_rgb(199, 199, 205),
-    )
+    palette().canvas
 }
 
 // ── Garis & pemisah ────────────────────────────────────────────────────────
 pub fn border() -> Color32 {
-    pick(
-        Color32::from_rgba_premultiplied(30, 30, 30, 30),
-        Color32::from_rgba_premultiplied(36, 36, 36, 36),
-    )
+    palette().border
 }
 
 pub fn border_soft() -> Color32 {
-    pick(
-        Color32::from_rgba_premultiplied(16, 16, 16, 16),
-        Color32::from_rgba_premultiplied(20, 20, 20, 20),
-    )
+    palette().border_soft
+}
+
+pub fn shadow() -> Color32 {
+    palette().shadow
 }
 
 // ── Teks ────────────────────────────────────────────────────────────────────
 pub fn text() -> Color32 {
-    pick(
-        Color32::from_rgb(245, 245, 247),
-        Color32::from_rgb(28, 28, 30),
-    )
+    palette().text
 }
 
 pub fn muted() -> Color32 {
-    pick(
-        Color32::from_rgba_premultiplied(150, 150, 150, 150),
-        Color32::from_rgba_premultiplied(150, 150, 150, 150),
-    )
+    palette().muted
 }
 
 pub fn dim() -> Color32 {
-    pick(
-        Color32::from_rgba_premultiplied(88, 88, 88, 88),
-        Color32::from_rgba_premultiplied(96, 96, 96, 96),
-    )
+    palette().dim
 }
 
 // ── Aksen & warna semantik ─────────────────────────────────────────────────
-/// Biru sistem Apple — accent utama macOS Tahoe.
 pub fn accent() -> Color32 {
-    Color32::from_rgb(10, 132, 255)
+    palette().accent
 }
 
 pub fn accent_soft() -> Color32 {
-    pick(
-        Color32::from_rgba_premultiplied(2, 29, 56, 56),
-        Color32::from_rgba_unmultiplied(10, 132, 255, 40),
-    )
+    palette().accent_soft
 }
 
-/// Kuning sistem — ⚠ peringatan.
+pub fn on_accent() -> Color32 {
+    palette().on_accent
+}
+
 pub fn yellow() -> Color32 {
-    pick(
-        Color32::from_rgb(255, 214, 10),
-        Color32::from_rgb(178, 134, 0),
-    )
+    palette().yellow
 }
-/// Oranye sistem — notifikasi ringan.
 pub fn orange() -> Color32 {
-    pick(
-        Color32::from_rgb(255, 149, 0),
-        Color32::from_rgb(200, 110, 0),
-    )
+    palette().orange
 }
-/// Merah sistem — ✕ error.
 pub fn red() -> Color32 {
-    pick(
-        Color32::from_rgb(255, 59, 48),
-        Color32::from_rgb(215, 45, 35),
-    )
+    palette().red
 }
-/// Biru — info / link.
 pub fn blue() -> Color32 {
-    Color32::from_rgb(10, 132, 255)
+    palette().blue
+}
+pub fn green() -> Color32 {
+    palette().green
 }
 
-// ── Dynamic Island · Catppuccin Mocha ─────────────────────────────────────
-/// Latar kapsul notifikasi.
+// ── Hero / banner ──────────────────────────────────────────────────────────
+pub fn hero_top() -> Color32 {
+    palette().hero_top
+}
+pub fn hero_bottom() -> Color32 {
+    palette().hero_bottom
+}
+pub fn hero_glow() -> Color32 {
+    palette().hero_glow
+}
+pub fn hero_text() -> Color32 {
+    palette().hero_text
+}
+pub fn hero_muted() -> Color32 {
+    palette().hero_muted
+}
+pub fn hero_card() -> Color32 {
+    palette().hero_card
+}
+pub fn hero_card_border() -> Color32 {
+    palette().hero_card_border
+}
+
+// ── Navigasi ───────────────────────────────────────────────────────────────
+pub fn nav_active_bg() -> Color32 {
+    palette().nav_active_bg
+}
+pub fn nav_active_fg() -> Color32 {
+    palette().nav_active_fg
+}
+
+// ── Dynamic Island ────────────────────────────────────────────────────────
 pub fn island() -> Color32 {
-    catppuccin::MANTLE
+    palette().island
 }
-/// Garis tepi kapsul notifikasi.
 pub fn island_border() -> Color32 {
-    catppuccin::SURFACE1
+    palette().island_border
 }
-/// Teks utama notifikasi.
 pub fn island_text() -> Color32 {
-    catppuccin::TEXT
+    palette().island_text
 }
-/// Teks sekunder notifikasi.
 pub fn island_muted() -> Color32 {
-    catppuccin::SUBTEXT0
+    palette().island_muted
 }
-/// Teks petunjuk kecil.
 pub fn island_dim() -> Color32 {
-    catppuccin::OVERLAY1
+    palette().island_dim
 }
-/// Warna aksen saat job sedang berjalan.
 pub fn island_accent() -> Color32 {
-    catppuccin::MAUVE
+    palette().accent
+}
+pub fn island_field() -> Color32 {
+    palette().island_field
 }
 
-/// Latar bergradasi vertikal — dipanggil sekali di root window.
+/// Latar bergradasi vertikal + glow dekoratif di sudut.
 pub fn paint_background(ui: &egui::Ui) {
     let rect = ui.max_rect();
     let mut mesh = egui::Mesh::default();
@@ -249,136 +492,187 @@ pub fn paint_background(ui: &egui::Ui) {
     mesh.add_triangle(0, 1, 2);
     mesh.add_triangle(1, 3, 2);
     ui.painter().add(egui::Shape::mesh(mesh));
+
+    // Glow lembut agar latar tidak terasa datar.
+    let accent = palette().glow;
+    let strength = if is_dark() { 26 } else { 16 };
+    soft_glow(
+        ui.painter(),
+        egui::pos2(rect.right() - 80.0, rect.top() + 60.0),
+        300.0,
+        alpha(accent, strength),
+    );
+    soft_glow(
+        ui.painter(),
+        egui::pos2(rect.left() + 40.0, rect.bottom() - 40.0),
+        260.0,
+        alpha(accent, strength / 2),
+    );
+}
+
+/// Lingkaran bercahaya lembut dengan gradasi radial (mesh, tanpa garis).
+fn soft_glow(painter: &egui::Painter, center: egui::Pos2, radius: f32, color: Color32) {
+    if radius <= 0.0 {
+        return;
+    }
+    let segments = 48u32;
+    let mut mesh = egui::Mesh::default();
+    mesh.colored_vertex(center, color);
+    for i in 0..=segments {
+        let a = i as f32 * std::f32::consts::TAU / segments as f32;
+        let pos = center + egui::vec2(a.cos(), a.sin()) * radius;
+        mesh.colored_vertex(pos, Color32::TRANSPARENT);
+    }
+    for i in 0..segments {
+        mesh.add_triangle(0, i + 1, i + 2);
+    }
+    painter.add(egui::Shape::mesh(mesh));
+}
+
+/// Lukis banner hero gelap dengan glow ungu.
+pub fn paint_hero(painter: &egui::Painter, rect: egui::Rect) {
+    let radius = CornerRadius::same(24);
+    painter.rect_filled(rect, radius, hero_top());
+
+    // Glow di kanan atas & kiri bawah, dijaga tetap di dalam sudut membulat.
+    soft_glow(
+        painter,
+        egui::pos2(
+            rect.right() - rect.width() * 0.22,
+            rect.top() + rect.height() * 0.18,
+        ),
+        rect.height() * 0.9,
+        alpha(hero_glow(), if is_dark() { 90 } else { 110 }),
+    );
+    soft_glow(
+        painter,
+        egui::pos2(rect.left() + rect.width() * 0.12, rect.bottom() - 6.0),
+        rect.height() * 0.55,
+        alpha(hero_bottom(), 160),
+    );
+
+    // Garis tepi halus di bagian atas, seperti pantulan cahaya.
+    painter.rect_stroke(
+        rect,
+        radius,
+        Stroke::new(1.0, Color32::from_white_alpha(24)),
+        StrokeKind::Inside,
+    );
 }
 
 // ---------------------------------------------------------------------------
-// apply — set egui visuals ke gaya macOS Tahoe
+// apply — set egui visuals mengikuti palet aktif
 // ---------------------------------------------------------------------------
 pub fn apply(ctx: &egui::Context) {
-    let dark = is_dark();
-    ctx.set_theme(if dark {
+    let p = palette();
+    ctx.set_theme(if p.dark {
         egui::ThemePreference::Dark
     } else {
         egui::ThemePreference::Light
     });
     ctx.all_styles_mut(|style| {
-        style.visuals = if dark {
+        style.visuals = if p.dark {
             egui::Visuals::dark()
         } else {
             egui::Visuals::light()
         };
-        style.visuals.dark_mode = dark;
+        style.visuals.dark_mode = p.dark;
 
-        // Latar utama Tahoe
-        style.visuals.panel_fill = bg();
-        style.visuals.window_fill = pick(
-            Color32::from_rgba_unmultiplied(44, 44, 48, 244),
-            Color32::from_rgba_unmultiplied(250, 250, 252, 246),
-        );
-        style.visuals.extreme_bg_color = input();
-        style.visuals.faint_bg_color = pick(
-            Color32::from_rgba_unmultiplied(255, 255, 255, 10),
-            Color32::from_rgba_unmultiplied(0, 0, 0, 6),
-        );
-        style.visuals.code_bg_color = pick(
-            Color32::from_rgb(28, 28, 30),
-            Color32::from_rgb(235, 235, 240),
-        );
+        style.visuals.panel_fill = p.bg;
+        style.visuals.window_fill = p.card;
+        style.visuals.extreme_bg_color = p.input;
+        style.visuals.faint_bg_color = if p.dark {
+            Color32::from_rgba_unmultiplied(255, 255, 255, 10)
+        } else {
+            Color32::from_rgba_unmultiplied(43, 33, 80, 6)
+        };
+        style.visuals.code_bg_color = p.input;
 
-        // Jendela & popup — sudut lebih besar, shadow kuat (gaya Tahoe)
-        style.visuals.window_stroke = Stroke::new(1.0, border());
+        // Jendela & popup — sudut besar, bayangan lembut.
+        style.visuals.window_stroke = Stroke::new(1.0, p.border);
         style.visuals.window_corner_radius = CornerRadius::same(20);
         style.visuals.menu_corner_radius = CornerRadius::same(14);
         style.visuals.window_shadow = egui::epaint::Shadow {
-            offset: [0, 24],
-            blur: 64,
+            offset: [0, 22],
+            blur: 56,
             spread: 4,
-            color: pick(
-                Color32::from_black_alpha(200),
-                Color32::from_black_alpha(70),
-            ),
+            color: if p.dark {
+                Color32::from_black_alpha(170)
+            } else {
+                Color32::from_black_alpha(48)
+            },
         };
         style.visuals.popup_shadow = egui::epaint::Shadow {
             offset: [0, 12],
-            blur: 32,
+            blur: 30,
             spread: 2,
-            color: pick(
-                Color32::from_black_alpha(160),
-                Color32::from_black_alpha(55),
-            ),
+            color: if p.dark {
+                Color32::from_black_alpha(150)
+            } else {
+                Color32::from_black_alpha(40)
+            },
         };
 
-        // Seleksi — biru Apple
-        style.visuals.selection.bg_fill = accent();
+        // Seleksi — aksen tema.
+        style.visuals.selection.bg_fill = p.accent;
         style.visuals.selection.stroke = Stroke::new(0.0, Color32::TRANSPARENT);
-        style.visuals.hyperlink_color = accent();
-        style.visuals.override_text_color = Some(text());
+        style.visuals.hyperlink_color = p.accent;
+        style.visuals.override_text_color = Some(p.text);
 
         // Widget: noninteractive (label, separator)
-        style.visuals.widgets.noninteractive.bg_fill = pick(
-            Color32::from_rgba_unmultiplied(255, 255, 255, 12),
-            Color32::from_rgba_unmultiplied(0, 0, 0, 8),
-        );
+        style.visuals.widgets.noninteractive.bg_fill = if p.dark {
+            Color32::from_rgba_unmultiplied(255, 255, 255, 12)
+        } else {
+            Color32::from_rgba_unmultiplied(43, 33, 80, 6)
+        };
         style.visuals.widgets.noninteractive.weak_bg_fill = Color32::TRANSPARENT;
-        style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0, border_soft());
-        style.visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, muted());
-        style.visuals.widgets.noninteractive.corner_radius = CornerRadius::same(12);
+        style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0, p.border_soft);
+        style.visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, p.muted);
+        style.visuals.widgets.noninteractive.corner_radius = CornerRadius::same(10);
 
         // Widget: inactive (tombol diam, input kosong)
-        style.visuals.widgets.inactive.bg_fill = pick(
-            Color32::from_rgba_unmultiplied(255, 255, 255, 16),
-            Color32::from_rgba_unmultiplied(255, 255, 255, 245),
-        );
-        style.visuals.widgets.inactive.weak_bg_fill = pick(
-            Color32::from_rgba_unmultiplied(255, 255, 255, 8),
-            Color32::from_rgba_unmultiplied(0, 0, 0, 5),
-        );
-        style.visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, border());
-        style.visuals.widgets.inactive.fg_stroke = Stroke::new(1.0, text());
-        style.visuals.widgets.inactive.corner_radius = CornerRadius::same(12);
+        style.visuals.widgets.inactive.bg_fill = if p.dark {
+            Color32::from_rgba_unmultiplied(255, 255, 255, 14)
+        } else {
+            p.card
+        };
+        style.visuals.widgets.inactive.weak_bg_fill = if p.dark {
+            Color32::from_rgba_unmultiplied(255, 255, 255, 8)
+        } else {
+            Color32::from_rgba_unmultiplied(43, 33, 80, 4)
+        };
+        style.visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, p.border);
+        style.visuals.widgets.inactive.fg_stroke = Stroke::new(1.0, p.text);
+        style.visuals.widgets.inactive.corner_radius = CornerRadius::same(10);
 
-        // Widget: hovered — glass lebih terang
-        style.visuals.widgets.hovered.bg_fill = pick(
-            Color32::from_rgba_unmultiplied(255, 255, 255, 30),
-            Color32::WHITE,
-        );
-        style.visuals.widgets.hovered.weak_bg_fill = pick(
-            Color32::from_rgba_unmultiplied(255, 255, 255, 20),
-            Color32::WHITE,
-        );
-        style.visuals.widgets.hovered.bg_stroke = Stroke::new(
-            1.0,
-            pick(
-                Color32::from_rgba_unmultiplied(255, 255, 255, 50),
-                Color32::from_rgba_unmultiplied(0, 0, 0, 55),
-            ),
-        );
-        style.visuals.widgets.hovered.fg_stroke = Stroke::new(1.0, text());
-        style.visuals.widgets.hovered.corner_radius = CornerRadius::same(12);
+        // Widget: hovered
+        style.visuals.widgets.hovered.bg_fill = if p.dark {
+            p.card_hover
+        } else {
+            Color32::from_rgb(0xf6, 0xf3, 0xff)
+        };
+        style.visuals.widgets.hovered.weak_bg_fill = style.visuals.widgets.hovered.bg_fill;
+        style.visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, p.border);
+        style.visuals.widgets.hovered.fg_stroke = Stroke::new(1.0, p.text);
+        style.visuals.widgets.hovered.corner_radius = CornerRadius::same(10);
         style.visuals.widgets.hovered.expansion = 0.0;
 
-        // Widget: active (sedang diklik) — biru Apple
-        style.visuals.widgets.active.bg_fill = accent_soft();
-        style.visuals.widgets.active.weak_bg_fill = accent_soft();
-        style.visuals.widgets.active.bg_stroke = Stroke::new(1.5, accent());
-        style.visuals.widgets.active.fg_stroke = Stroke::new(1.5, accent());
-        style.visuals.widgets.active.corner_radius = CornerRadius::same(12);
+        // Widget: active (sedang diklik)
+        style.visuals.widgets.active.bg_fill = p.accent_soft;
+        style.visuals.widgets.active.weak_bg_fill = p.accent_soft;
+        style.visuals.widgets.active.bg_stroke = Stroke::new(1.2, p.accent);
+        style.visuals.widgets.active.fg_stroke = Stroke::new(1.2, p.accent);
+        style.visuals.widgets.active.corner_radius = CornerRadius::same(10);
         style.visuals.widgets.active.expansion = 0.0;
 
         // Widget: open (combobox terbuka)
-        style.visuals.widgets.open.bg_fill = pick(
-            Color32::from_rgba_unmultiplied(255, 255, 255, 24),
-            Color32::WHITE,
-        );
-        style.visuals.widgets.open.weak_bg_fill = pick(
-            Color32::from_rgba_unmultiplied(255, 255, 255, 14),
-            Color32::from_rgba_unmultiplied(255, 255, 255, 245),
-        );
-        style.visuals.widgets.open.bg_stroke = Stroke::new(1.0, border());
-        style.visuals.widgets.open.fg_stroke = Stroke::new(1.0, text());
-        style.visuals.widgets.open.corner_radius = CornerRadius::same(12);
+        style.visuals.widgets.open.bg_fill = p.card;
+        style.visuals.widgets.open.weak_bg_fill = p.card_hover;
+        style.visuals.widgets.open.bg_stroke = Stroke::new(1.0, p.border);
+        style.visuals.widgets.open.fg_stroke = Stroke::new(1.0, p.text);
+        style.visuals.widgets.open.corner_radius = CornerRadius::same(10);
 
-        // Scroll bar mengambang & tipis — seperti overlay scroller macOS
+        // Scrollbar mengambang & tipis.
         style.spacing.scroll.floating = true;
         style.spacing.scroll.bar_width = 8.0;
         style.spacing.scroll.floating_width = 3.0;
@@ -389,7 +683,7 @@ pub fn apply(ctx: &egui::Context) {
         style.spacing.scroll.active_handle_opacity = 0.55;
         style.spacing.scroll.interact_handle_opacity = 0.8;
 
-        // Spasi — sedikit lebih longgar dari Tahoe HIG
+        // Spasi
         style.spacing.item_spacing = Vec2::new(10.0, 9.0);
         style.spacing.button_padding = Vec2::new(16.0, 8.0);
         style.spacing.interact_size = Vec2::new(36.0, 36.0);
@@ -401,7 +695,7 @@ pub fn apply(ctx: &egui::Context) {
         style.spacing.icon_width_inner = 10.0;
         style.spacing.icon_spacing = 8.0;
 
-        // Font — SF Pro Text / Display via font proporsional egui
+        // Font
         style
             .text_styles
             .insert(egui::TextStyle::Body, FontId::proportional(14.0));
@@ -421,109 +715,87 @@ pub fn apply(ctx: &egui::Context) {
 }
 
 // ---------------------------------------------------------------------------
-// Komponen UI gaya Tahoe
+// Komponen UI
 // ---------------------------------------------------------------------------
 
-/// Card "liquid glass" — seperti NSVisualEffectView .popover di dark mode
+/// Kartu utama: permukaan terang, sudut membulat, bayangan lembut.
 pub fn card() -> egui::Frame {
     egui::Frame::new()
         .fill(card_fill())
         .corner_radius(CornerRadius::same(20))
         .stroke(Stroke::new(1.0, border_soft()))
         .shadow(egui::epaint::Shadow {
-            offset: [0, 5],
-            blur: 16,
+            offset: [0, 8],
+            blur: 24,
             spread: 0,
-            color: pick(Color32::from_black_alpha(45), Color32::from_black_alpha(18)),
+            color: shadow(),
         })
         .inner_margin(Margin::same(18))
 }
 
-/// Tombol utama — pill biru Apple dengan efek gloss
+/// Tombol utama — pill aksen tema.
 pub fn primary_button(ui: &mut egui::Ui, label: &str) -> egui::Response {
     ui.add(
-        egui::Button::new(
-            RichText::new(label)
-                .size(13.5)
-                .strong()
-                .color(Color32::WHITE),
-        )
-        .fill(accent())
-        .stroke(Stroke::new(
-            1.0,
-            Color32::from_rgba_unmultiplied(255, 255, 255, 60),
-        ))
-        .corner_radius(CornerRadius::same(12))
-        .min_size(Vec2::new(0.0, 36.0)),
+        egui::Button::new(RichText::new(label).size(13.0).strong().color(on_accent()))
+            .fill(accent())
+            .stroke(Stroke::new(1.0, alpha(accent(), 160)))
+            .corner_radius(CornerRadius::same(10))
+            .min_size(Vec2::new(0.0, 34.0)),
     )
 }
 
-/// Tombol sekunder — glass pill transparan
+/// Tombol sekunder — permukaan kartu dengan garis tepi.
 pub fn secondary_button(ui: &mut egui::Ui, label: &str) -> egui::Response {
     ui.add(
-        egui::Button::new(RichText::new(label).size(13.5).color(text()))
-            .fill(pick(
-                Color32::from_rgba_unmultiplied(255, 255, 255, 18),
-                Color32::from_rgba_unmultiplied(255, 255, 255, 245),
-            ))
+        egui::Button::new(RichText::new(label).size(13.0).color(text()))
+            .fill(card_fill())
             .stroke(Stroke::new(1.0, border()))
-            .corner_radius(CornerRadius::same(12))
-            .min_size(Vec2::new(0.0, 36.0)),
+            .corner_radius(CornerRadius::same(10))
+            .min_size(Vec2::new(0.0, 34.0)),
     )
 }
 
-/// Tombol bahaya — merah sistem Apple
+/// Tombol bahaya.
 pub fn danger_button(ui: &mut egui::Ui, label: &str) -> egui::Response {
     ui.add(
-        egui::Button::new(RichText::new(label).size(13.5).color(Color32::WHITE))
-            .fill(Color32::from_rgba_unmultiplied(255, 59, 48, 180))
-            .stroke(Stroke::new(
-                1.0,
-                Color32::from_rgba_unmultiplied(255, 59, 48, 120),
-            ))
-            .corner_radius(CornerRadius::same(12))
-            .min_size(Vec2::new(0.0, 36.0)),
+        egui::Button::new(RichText::new(label).size(13.0).color(Color32::WHITE))
+            .fill(alpha(red(), 205))
+            .stroke(Stroke::new(1.0, alpha(red(), 150)))
+            .corner_radius(CornerRadius::same(10))
+            .min_size(Vec2::new(0.0, 34.0)),
     )
 }
 
-/// Badge pill — seperti label kecil macOS
+/// Badge pill kecil.
 pub fn badge(ui: &mut egui::Ui, text: &str, color: Color32) {
     egui::Frame::new()
-        .fill(Color32::from_rgba_unmultiplied(
-            color.r(),
-            color.g(),
-            color.b(),
-            38,
-        ))
+        .fill(alpha(color, 26))
         .corner_radius(CornerRadius::same(20))
-        .stroke(Stroke::new(
-            1.0,
-            Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 70),
-        ))
-        .inner_margin(Margin::symmetric(10, 4))
+        .stroke(Stroke::new(1.0, alpha(color, 60)))
+        .inner_margin(Margin::symmetric(9, 3))
         .show(ui, |ui| {
-            ui.label(RichText::new(text).size(11.0).color(color).strong());
+            ui.label(RichText::new(text).size(10.5).color(color).strong());
         });
 }
 
-/// Label section kecil uppercase — seperti NSTableView group header macOS
+/// Label section kecil uppercase.
 pub fn section_label(ui: &mut egui::Ui, text: &str) {
     ui.label(
         RichText::new(text.to_uppercase())
-            .size(10.5)
-            .extra_letter_spacing(0.5)
+            .size(10.0)
+            .extra_letter_spacing(0.7)
             .color(dim())
             .strong(),
     );
 }
 
-/// Titik status berwarna
+/// Titik status berwarna.
 pub fn dot(ui: &mut egui::Ui, color: Color32) {
     let (rect, _) = ui.allocate_exact_size(Vec2::splat(8.0), egui::Sense::hover());
     ui.painter().circle_filled(rect.center(), 3.5, color);
 }
 
-/// Pemisah tipis transparan gaya Tahoe
+/// Pemisah tipis.
 pub fn separator(ui: &mut egui::Ui) {
     let width = ui.available_width();
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, 9.0), egui::Sense::hover());
@@ -534,15 +806,12 @@ pub fn separator(ui: &mut egui::Ui) {
     );
 }
 
-/// Segmented control — pill capsule gaya macOS Tahoe
+/// Segmented control — kapsul dengan indikator aktif.
 pub fn segmented(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
-    // Container pill transparan
     egui::Frame::new()
-        .fill(pick(
-            Color32::from_rgba_unmultiplied(0, 0, 0, 60),
-            Color32::from_rgba_unmultiplied(0, 0, 0, 22),
-        ))
-        .corner_radius(CornerRadius::same(11))
+        .fill(input())
+        .corner_radius(CornerRadius::same(10))
+        .stroke(Stroke::new(1.0, border_soft()))
         .inner_margin(Margin::same(3))
         .show(ui, |ui| {
             ui.horizontal(|ui| {
@@ -550,32 +819,23 @@ pub fn segmented(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
                 for (i, label) in labels.iter().enumerate() {
                     let active = *selected == i;
                     let response = ui.add(
-                        egui::Button::new(RichText::new(*label).size(12.5).color(if active {
+                        egui::Button::new(RichText::new(*label).size(12.0).color(if active {
                             text()
                         } else {
                             muted()
                         }))
                         .fill(if active {
-                            pick(
-                                Color32::from_rgba_unmultiplied(255, 255, 255, 36),
-                                Color32::WHITE,
-                            )
+                            card_fill()
                         } else {
                             Color32::TRANSPARENT
                         })
                         .stroke(if active {
-                            Stroke::new(
-                                1.0,
-                                pick(
-                                    Color32::from_rgba_unmultiplied(255, 255, 255, 40),
-                                    Color32::from_rgba_unmultiplied(0, 0, 0, 28),
-                                ),
-                            )
+                            Stroke::new(1.0, border_soft())
                         } else {
                             Stroke::NONE
                         })
-                        .corner_radius(CornerRadius::same(9))
-                        .min_size(Vec2::new(0.0, 28.0)),
+                        .corner_radius(CornerRadius::same(8))
+                        .min_size(Vec2::new(0.0, 26.0)),
                     );
                     if response.clicked() {
                         *selected = i;
@@ -585,45 +845,34 @@ pub fn segmented(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
         });
 }
 
-/// Segmented RTL — seperti `segmented` tapi untuk layout kanan-ke-kiri
+/// Segmented RTL — seperti `segmented` tapi untuk layout kanan-ke-kiri.
 pub fn segmented_rtl(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
     egui::Frame::new()
-        .fill(pick(
-            Color32::from_rgba_unmultiplied(0, 0, 0, 60),
-            Color32::from_rgba_unmultiplied(0, 0, 0, 22),
-        ))
-        .corner_radius(CornerRadius::same(11))
+        .fill(input())
+        .corner_radius(CornerRadius::same(10))
+        .stroke(Stroke::new(1.0, border_soft()))
         .inner_margin(Margin::same(3))
         .show(ui, |ui| {
             for (i, label) in labels.iter().enumerate().rev() {
                 let active = *selected == i;
                 let response = ui.add(
-                    egui::Button::new(RichText::new(*label).size(12.5).color(if active {
+                    egui::Button::new(RichText::new(*label).size(12.0).color(if active {
                         text()
                     } else {
                         muted()
                     }))
                     .fill(if active {
-                        pick(
-                            Color32::from_rgba_unmultiplied(255, 255, 255, 36),
-                            Color32::WHITE,
-                        )
+                        card_fill()
                     } else {
                         Color32::TRANSPARENT
                     })
                     .stroke(if active {
-                        Stroke::new(
-                            1.0,
-                            pick(
-                                Color32::from_rgba_unmultiplied(255, 255, 255, 40),
-                                Color32::from_rgba_unmultiplied(0, 0, 0, 28),
-                            ),
-                        )
+                        Stroke::new(1.0, border_soft())
                     } else {
                         Stroke::NONE
                     })
-                    .corner_radius(CornerRadius::same(9))
-                    .min_size(Vec2::new(0.0, 28.0)),
+                    .corner_radius(CornerRadius::same(8))
+                    .min_size(Vec2::new(0.0, 26.0)),
                 );
                 if response.clicked() {
                     *selected = i;
@@ -654,6 +903,8 @@ pub enum Icon {
     Page,
     Close,
     Stack,
+    ChevronDown,
+    ChevronRight,
 }
 
 pub fn icon(painter: &egui::Painter, rect: egui::Rect, kind: Icon, color: Color32, width: f32) {
@@ -799,6 +1050,14 @@ pub fn icon(painter: &egui::Painter, rect: egui::Rect, kind: Icon, color: Color3
                 );
             }
         }
+        Icon::ChevronDown => {
+            painter.line_segment([p(0.2, 0.36), p(0.5, 0.68)], s);
+            painter.line_segment([p(0.5, 0.68), p(0.8, 0.36)], s);
+        }
+        Icon::ChevronRight => {
+            painter.line_segment([p(0.36, 0.2), p(0.68, 0.5)], s);
+            painter.line_segment([p(0.68, 0.5), p(0.36, 0.8)], s);
+        }
     }
 }
 
@@ -818,4 +1077,20 @@ pub fn icon_button(ui: &mut egui::Ui, kind: Icon, tooltip: &str) -> egui::Respon
         1.5,
     );
     response.on_hover_text(tooltip)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_flavor_is_mocha() {
+        assert_eq!(Flavor::default(), Flavor::Mocha);
+    }
+
+    #[test]
+    fn legacy_latte_pref_loads_as_mocha() {
+        let flavor: Flavor = serde_json::from_str("\"latte\"").unwrap();
+        assert_eq!(flavor, Flavor::Mocha);
+    }
 }

@@ -571,71 +571,78 @@ impl CetakinApp {
 
     fn preview_panel(&mut self, ui: &mut egui::Ui, layout: &SheetLayout) {
         theme::card().show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(
-                    RichText::new("Pratinjau")
-                        .size(14.0)
-                        .strong()
-                        .color(theme::text()),
-                );
+            let viewport_h = ui.available_height();
+            egui::ScrollArea::vertical()
+                .id_salt("preview-scroll")
+                .auto_shrink([false, false])
+                .max_height(viewport_h)
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            RichText::new("Pratinjau")
+                                .size(14.0)
+                                .strong()
+                                .color(theme::text()),
+                        );
 
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    if ui
-                        .add(
-                            egui::Button::new(RichText::new("Fit").size(11.5))
-                                .min_size(Vec2::new(34.0, 26.0))
-                                .corner_radius(CornerRadius::same(7)),
-                        )
-                        .clicked()
-                    {
-                        self.preview_zoom = 1.0;
-                        self.preview_pan = Vec2::ZERO;
-                    }
-                    if ui
-                        .add(
-                            egui::Button::new(RichText::new("+").size(14.0))
-                                .min_size(Vec2::new(26.0, 26.0))
-                                .corner_radius(CornerRadius::same(7)),
-                        )
-                        .clicked()
-                    {
-                        self.preview_zoom = (self.preview_zoom * 1.15).min(3.0);
-                    }
-                    ui.label(
-                        RichText::new(format!("{:.0}%", self.preview_zoom * 100.0))
-                            .size(11.0)
-                            .color(theme::muted()),
+                        ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                            if ui
+                                .add(
+                                    egui::Button::new(RichText::new("Fit").size(11.5))
+                                        .min_size(Vec2::new(34.0, 26.0))
+                                        .corner_radius(CornerRadius::same(7)),
+                                )
+                                .clicked()
+                            {
+                                self.preview_zoom = 1.0;
+                                self.preview_pan = Vec2::ZERO;
+                            }
+                            if ui
+                                .add(
+                                    egui::Button::new(RichText::new("+").size(14.0))
+                                        .min_size(Vec2::new(26.0, 26.0))
+                                        .corner_radius(CornerRadius::same(7)),
+                                )
+                                .clicked()
+                            {
+                                self.preview_zoom = (self.preview_zoom * 1.15).min(3.0);
+                            }
+                            ui.label(
+                                RichText::new(format!("{:.0}%", self.preview_zoom * 100.0))
+                                    .size(11.0)
+                                    .color(theme::muted()),
+                            );
+                            if ui
+                                .add(
+                                    egui::Button::new(RichText::new("−").size(14.0))
+                                        .min_size(Vec2::new(26.0, 26.0))
+                                        .corner_radius(CornerRadius::same(7)),
+                                )
+                                .clicked()
+                            {
+                                self.preview_zoom = (self.preview_zoom / 1.15).max(0.6);
+                                if self.preview_zoom <= 1.0 {
+                                    self.preview_pan = Vec2::ZERO;
+                                }
+                            }
+                            ui.checkbox(&mut self.show_guides, RichText::new("Garis").size(11.5));
+                        });
+                    });
+
+                    ui.add_space(9.0);
+                    let canvas_h = (viewport_h - 224.0).clamp(120.0, 520.0);
+                    let (rect, response) = ui.allocate_exact_size(
+                        Vec2::new(ui.available_width(), canvas_h),
+                        Sense::click_and_drag(),
                     );
-                    if ui
-                        .add(
-                            egui::Button::new(RichText::new("−").size(14.0))
-                                .min_size(Vec2::new(26.0, 26.0))
-                                .corner_radius(CornerRadius::same(7)),
-                        )
-                        .clicked()
-                    {
-                        self.preview_zoom = (self.preview_zoom / 1.15).max(0.6);
-                        if self.preview_zoom <= 1.0 {
-                            self.preview_pan = Vec2::ZERO;
-                        }
-                    }
-                    ui.checkbox(&mut self.show_guides, RichText::new("Garis").size(11.5));
+                    self.draw_canvas(ui, rect, response, layout);
+
+                    ui.add_space(9.0);
+                    self.stats_strip(ui, layout);
+                    ui.add_space(8.0);
+                    self.photo_strip(ui);
+                    ui.add_space(4.0);
                 });
-            });
-
-            ui.add_space(9.0);
-            let reserved = 286.0;
-            let canvas_h = (ui.available_height() - reserved).clamp(220.0, 560.0);
-            let (rect, response) = ui.allocate_exact_size(
-                Vec2::new(ui.available_width(), canvas_h),
-                Sense::click_and_drag(),
-            );
-            self.draw_canvas(ui, rect, response, layout);
-
-            ui.add_space(9.0);
-            self.stats_strip(ui, layout);
-            ui.add_space(8.0);
-            self.photo_strip(ui);
         });
     }
 
@@ -670,8 +677,13 @@ impl CetakinApp {
             self.preview_pan += response.drag_delta();
         }
         if response.hovered() {
-            let scroll = ui.input(|i| i.smooth_scroll_delta.y);
-            if scroll.abs() > 0.5 {
+            let (scroll, zoom_mod) = ui.input(|i| {
+                (
+                    i.smooth_scroll_delta.y,
+                    i.modifiers.ctrl || i.modifiers.command,
+                )
+            });
+            if zoom_mod && scroll.abs() > 0.5 {
                 let old = self.preview_zoom;
                 self.preview_zoom = (self.preview_zoom * (1.0 + scroll * 0.0015)).clamp(0.6, 3.0);
                 if self.preview_zoom <= 1.0 {
@@ -802,7 +814,7 @@ impl CetakinApp {
         }
 
         if self.show_guides {
-            let accent = Color32::from_rgba_unmultiplied(10, 132, 255, 190);
+            let accent = theme::accent();
             for (x0, y0, x1, y1) in layout::cut_segments(layout, self.settings.cut_style) {
                 let a = mm(x0, y0);
                 let b = mm(x1, y1);
@@ -829,21 +841,27 @@ impl CetakinApp {
             painter.rect_filled(
                 box_rect,
                 CornerRadius::same(12),
-                Color32::from_rgba_unmultiplied(24, 26, 30, 235),
+                Color32::from_rgba_unmultiplied(255, 255, 255, 242),
+            );
+            painter.rect_stroke(
+                box_rect,
+                CornerRadius::same(12),
+                Stroke::new(1.0, theme::accent()),
+                StrokeKind::Inside,
             );
             painter.text(
                 box_rect.center() - Vec2::new(0.0, 15.0),
                 Align2::CENTER_CENTER,
                 "Impor foto untuk mulai",
                 FontId::proportional(14.0),
-                theme::text(),
+                Color32::from_rgb(0x24, 0x1f, 0x36),
             );
             painter.text(
                 box_rect.center() + Vec2::new(0.0, 10.0),
                 Align2::CENTER_CENTER,
                 "atau jatuhkan file ke jendela ini",
                 FontId::proportional(11.0),
-                theme::muted(),
+                Color32::from_rgb(0x6b, 0x64, 0x86),
             );
         }
     }

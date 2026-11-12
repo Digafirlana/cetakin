@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::app::CetakinApp;
 use crate::model::SheetSettings;
+use crate::theme::Flavor;
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
@@ -14,6 +15,8 @@ pub struct Prefs {
     pub sheet: SheetSettings,
     pub studio: String,
     pub last_dir: Option<PathBuf>,
+    /// Palet tema yang dipakai (Catppuccin Frappé/Macchiato/Mocha).
+    pub theme: Flavor,
 }
 
 impl CetakinApp {
@@ -24,6 +27,7 @@ impl CetakinApp {
             sheet: self.settings.clone(),
             studio: self.studio.clone(),
             last_dir: self.convert.output_dir.clone(),
+            theme: crate::theme::flavor(),
         };
         if let Some(dir) = self.prefs_path.parent() {
             let _ = std::fs::create_dir_all(dir);

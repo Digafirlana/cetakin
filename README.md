@@ -38,14 +38,18 @@ Dibuat dengan **Rust + eframe/egui** (renderer glow/OpenGL). Berjalan di **Windo
 - **Status komponen pendukung** (LibreOffice, Poppler, MuPDF, ImageMagick, CUPS).
 
 ### 4. Antarmuka
-- **Tema macOS Tahoe (Liquid Glass)**: latar bergradasi gelap, panel kaca transparan,
-  aksen biru sistem Apple, sudut membulat besar, dan scrollbar mengambang.
+- **Dashboard modern**: latar lavender bergradasi, sidebar kartu melayang, banner sambutan,
+  kartu statistik, dan permukaan putih membulat dengan bayangan lembut.
+- **Tema Catppuccin yang bisa diganti**: Frappé, Macchiato, dan Mocha
+  (gelap) — pilih langsung di tab **Pengaturan → Tema Tampilan**. Tema tersimpan
+  bersama preferensi. Tersedia juga tema alternatif **Tahoe Gelap**.
 - **Dynamic Island** di tengah atas: progress job serta toast sukses/error/info.
-- **Notifikasi Catppuccin Mocha**: kapsul membulat penuh, warna lembut, aksen hijau/merah/biru sesuai status.
+- **Notifikasi Catppuccin**: kapsul membulat penuh, warna lembut, aksen hijau/merah/biru sesuai status.
 - Ringkas saat berjalan, membesar saat hover/klik; error tetap terbuka sampai ditutup.
 - Animasi buka/tutup halus tanpa dependency tambahan.
 
 ### 5. Pengaturan
+- **Tema tampilan** Catppuccin Frappé/Macchiato/Mocha (plus Tahoe Gelap).
 - Nama studio dan footer.
 - Bawaan kertas, orientasi, ukuran foto, margin, DPI, auto-center, batch.
 - Simpan/reset preferensi, lokasi file konfigurasi, hasil terakhir.
@@ -149,7 +153,7 @@ src/
   photos.rs       Daftar foto, rotasi, thumbnail, pemetaan ke layout
   jobs.rs         Job latar belakang & toast notifikasi
   prefs.rs        Muat, simpan, dan reset preferensi
-  ui_chrome.rs    Sidebar, header, dan Dynamic Island
+  ui_chrome.rs    Sidebar, header, banner hero, dan Dynamic Island
   ui_common.rs    Widget UI bersama (kartu, slider, dashed rect)
   util.rs         Helper path & filesystem
   model.rs        Tipe pengaturan, preset kertas/foto/margin
@@ -158,7 +162,7 @@ src/
   pdf_export.rs   Ekspor lembar foto & PDF teks
   convert.rs      Konversi gambar/PDF/Word, printer, deteksi tool
   docx.rs         Penulis & pembaca DOCX
-  theme.rs        Palet warna, kartu, tombol, ikon garis
+  theme.rs        Palet Catppuccin, kartu, tombol, ikon garis
   ui_sheet.rs     Tab Cetak Foto
   ui_convert.rs   Tab Konversi
   ui_tools.rs     Tab Alat & Pengaturan

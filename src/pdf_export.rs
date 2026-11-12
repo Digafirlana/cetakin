@@ -92,8 +92,6 @@ fn draw_footer(
     layer.use_text(sanitize_text(text), size_pt, Mm(x), Mm(y), font);
 }
 
-/// Tulis satu lembar (satu halaman) foto. `photos` harus sejajar dengan
-/// `layout.cells`.
 #[allow(clippy::too_many_arguments)]
 fn render_sheet_page(
     doc: &PdfDocumentReference,

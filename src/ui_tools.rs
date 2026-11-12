@@ -694,6 +694,8 @@ impl CetakinApp {
                     let left_w = (ui.available_width() * 0.54).max(400.0);
                     ui.vertical(|ui| {
                         ui.set_width(left_w);
+                        self.theme_card(ui);
+                        ui.add_space(12.0);
                         self.studio_card(ui);
                         ui.add_space(12.0);
                         self.defaults_card(ui);
@@ -709,6 +711,51 @@ impl CetakinApp {
                 self.help_card(ui);
                 ui.add_space(8.0);
             });
+    }
+
+    fn theme_card(&mut self, ui: &mut egui::Ui) {
+        let mut chosen = None;
+        theme::card().show(ui, |ui| {
+            ui.horizontal(|ui| {
+                card_title(ui, theme::Icon::Settings, "Tema Tampilan");
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    theme::badge(ui, theme::flavor().short_label(), theme::accent());
+                });
+            });
+            ui.add_space(5.0);
+            ui.label(
+                RichText::new(
+                    "Pilih palet Catppuccin. Frappé paling lembut, \
+                     Mocha paling pekat dan nyaman saat malam.",
+                )
+                .size(11.0)
+                .color(theme::muted()),
+            );
+            ui.add_space(10.0);
+            ui.horizontal_wrapped(|ui| {
+                for f in theme::Flavor::ALL {
+                    if theme_chip(ui, f, f == theme::flavor()).clicked() {
+                        chosen = Some(f);
+                    }
+                }
+            });
+            ui.add_space(8.0);
+            ui.label(
+                RichText::new("Pilihan tema ikut tersimpan bersama preferensi.")
+                    .size(10.0)
+                    .color(theme::dim()),
+            );
+        });
+
+        if let Some(f) = chosen {
+            theme::set_flavor(f);
+            theme::apply(ui.ctx());
+            ui.ctx().request_repaint();
+            // Simpan langsung agar tema tidak hilang bila aplikasi ditutup paksa.
+            self.prefs_dirty = true;
+            self.save_prefs();
+            self.toast_info("Tema diganti", &format!("{} · {}", f.label(), f.tagline()));
+        }
     }
 
     fn studio_card(&mut self, ui: &mut egui::Ui) {
@@ -1092,6 +1139,73 @@ fn settings_combo(
         });
     });
     ui.add_space(4.0);
+}
+
+fn theme_chip(ui: &mut egui::Ui, f: theme::Flavor, selected: bool) -> egui::Response {
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(140.0, 64.0), Sense::click());
+    let hovered = response.hovered();
+    let fill = if selected {
+        theme::accent_soft()
+    } else if hovered {
+        theme::card_hover()
+    } else {
+        theme::input()
+    };
+    ui.painter().rect_filled(rect, CornerRadius::same(13), fill);
+    ui.painter().rect_stroke(
+        rect,
+        CornerRadius::same(13),
+        Stroke::new(
+            if selected { 1.5 } else { 1.0 },
+            if selected {
+                theme::accent()
+            } else {
+                theme::border_soft()
+            },
+        ),
+        egui::StrokeKind::Inside,
+    );
+
+    for (i, color) in theme::swatches(f).iter().enumerate() {
+        let center = egui::pos2(rect.left() + 16.0 + i as f32 * 12.0, rect.top() + 16.0);
+        ui.painter().circle_filled(center, 4.5, *color);
+        ui.painter()
+            .circle_stroke(center, 4.5, Stroke::new(1.0, theme::border()));
+    }
+
+    ui.painter().text(
+        egui::pos2(rect.left() + 13.0, rect.top() + 36.0),
+        Align2::LEFT_CENTER,
+        f.short_label(),
+        FontId::proportional(12.5),
+        if selected {
+            theme::accent()
+        } else {
+            theme::text()
+        },
+    );
+    ui.painter().text(
+        egui::pos2(rect.left() + 13.0, rect.top() + 51.0),
+        Align2::LEFT_CENTER,
+        f.tagline(),
+        FontId::proportional(9.5),
+        theme::dim(),
+    );
+
+    if selected {
+        theme::icon(
+            ui.painter(),
+            egui::Rect::from_min_size(
+                egui::pos2(rect.right() - 24.0, rect.top() + 10.0),
+                Vec2::splat(13.0),
+            ),
+            theme::Icon::Check,
+            theme::accent(),
+            1.6,
+        );
+    }
+
+    response
 }
 
 fn short_path(path: &str, max: usize) -> String {

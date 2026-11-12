@@ -2,10 +2,11 @@ use std::time::Duration;
 
 use eframe::egui::{
     self, Align, Align2, Color32, CornerRadius, FontId, Id, Layout, Margin, Order, RichText, Sense,
-    Stroke, StrokeKind, Vec2,
+    Stroke, StrokeKind, UiBuilder, Vec2,
 };
 
 use crate::app::{CetakinApp, Tab, ToastKind};
+use crate::layout;
 use crate::theme;
 
 enum IslandContent {
@@ -59,148 +60,233 @@ enum HeaderAction {
 }
 
 impl CetakinApp {
-    // -------------------------------------------------------------- chrome
+    // -------------------------------------------------------------- sidebar
+
+    /// Inisial studio untuk avatar sidebar (maks. 2 huruf).
+    fn initials(&self) -> String {
+        let mut out = String::new();
+        for word in self.studio.split_whitespace().take(2) {
+            if let Some(ch) = word.chars().next() {
+                out.extend(ch.to_uppercase());
+            }
+        }
+        if out.is_empty() {
+            "CT".to_string()
+        } else {
+            out
+        }
+    }
 
     pub(crate) fn sidebar(&mut self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            let size = Vec2::splat(38.0);
-            let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
-            ui.painter()
-                .rect_filled(rect, CornerRadius::same(11), theme::accent());
-            ui.painter().rect_stroke(
-                rect,
-                CornerRadius::same(11),
-                Stroke::new(1.0, Color32::from_white_alpha(70)),
-                StrokeKind::Inside,
-            );
-            theme::icon(
-                ui.painter(),
-                rect.shrink(8.0),
-                theme::Icon::Print,
-                Color32::WHITE,
-                1.8,
-            );
-            ui.add_space(2.0);
-            ui.vertical(|ui| {
-                ui.label(
-                    RichText::new("cetakin.")
-                        .size(21.0)
-                        .strong()
-                        .color(theme::text()),
-                );
-                ui.label(
-                    RichText::new("digital printing")
-                        .size(10.0)
-                        .color(theme::dim()),
-                );
+        let available_h = ui.available_height();
+        egui::Frame::new()
+            .fill(theme::sidebar())
+            .corner_radius(CornerRadius::same(24))
+            .stroke(Stroke::new(1.0, theme::border_soft()))
+            .shadow(egui::epaint::Shadow {
+                offset: [0, 12],
+                blur: 32,
+                spread: 0,
+                color: theme::shadow(),
+            })
+            .inner_margin(Margin::same(14))
+            .show(ui, |ui| {
+                ui.set_min_width(ui.available_width());
+                ui.set_min_height((available_h - 28.0).max(0.0));
+                self.sidebar_brand(ui);
+                ui.add_space(20.0);
+
+                theme::section_label(ui, "Ruang kerja");
+                ui.add_space(7.0);
+                let main_items = [
+                    (Tab::Sheet, theme::Icon::Photo, "Cetak Foto"),
+                    (Tab::Convert, theme::Icon::Convert, "Konversi"),
+                    (Tab::Tools, theme::Icon::Tools, "Alat"),
+                ];
+                for (tab, icon, label) in main_items {
+                    if self.nav_item(ui, icon, label, self.tab == tab) {
+                        self.tab = tab;
+                    }
+                    ui.add_space(2.0);
+                }
+
+                ui.add_space(12.0);
+                theme::separator(ui);
+                ui.add_space(12.0);
+
+                theme::section_label(ui, "Lainnya");
+                ui.add_space(7.0);
+                if self.nav_item(
+                    ui,
+                    theme::Icon::Settings,
+                    "Pengaturan",
+                    self.tab == Tab::Settings,
+                ) {
+                    self.tab = Tab::Settings;
+                }
+
+                // Dorong kartu ringkasan ke bagian bawah sidebar.
+                ui.add_space((ui.available_height() - 138.0).max(10.0));
+                self.sidebar_summary(ui);
+                ui.add_space(10.0);
+                self.sidebar_status(ui);
             });
-        });
-        ui.add_space(30.0);
-        theme::section_label(ui, "Workspace");
-        ui.add_space(9.0);
+    }
 
-        let items = [
-            (Tab::Sheet, theme::Icon::Photo, "Cetak Foto"),
-            (Tab::Convert, theme::Icon::Convert, "Konversi"),
-            (Tab::Tools, theme::Icon::Tools, "Alat"),
-            (Tab::Settings, theme::Icon::Settings, "Pengaturan"),
-        ];
-        for (tab, icon, label) in items {
-            if self.nav_item(ui, icon, label, self.tab == tab) {
-                self.tab = tab;
-            }
-            ui.add_space(2.0);
+    fn sidebar_brand(&self, ui: &mut egui::Ui) {
+        let (rect, response) =
+            ui.allocate_exact_size(Vec2::new(ui.available_width(), 46.0), egui::Sense::click());
+        if response.hovered() {
+            ui.painter()
+                .rect_filled(rect, CornerRadius::same(12), theme::card_hover());
         }
-
-        ui.add_space((ui.available_height() - 168.0).max(0.0));
-        self.sidebar_tip(ui);
-        ui.add_space(10.0);
-        self.sidebar_status(ui);
+        let avatar = egui::Rect::from_min_size(
+            egui::pos2(rect.left() + 4.0, rect.center().y - 17.0),
+            Vec2::splat(34.0),
+        );
+        ui.painter()
+            .rect_filled(avatar, CornerRadius::same(10), theme::accent_soft());
+        ui.painter().text(
+            avatar.center(),
+            Align2::CENTER_CENTER,
+            self.initials(),
+            FontId::proportional(12.5),
+            theme::accent(),
+        );
+        let display_name = if self.studio.trim().is_empty() {
+            "Cetakin Studio".to_string()
+        } else {
+            shorten(self.studio.trim(), 20)
+        };
+        ui.painter().text(
+            egui::pos2(avatar.right() + 10.0, rect.center().y - 7.0),
+            Align2::LEFT_CENTER,
+            display_name,
+            FontId::proportional(13.0),
+            theme::text(),
+        );
+        ui.painter().text(
+            egui::pos2(avatar.right() + 10.0, rect.center().y + 9.0),
+            Align2::LEFT_CENTER,
+            "Workspace cetak",
+            FontId::proportional(10.0),
+            theme::dim(),
+        );
+        theme::icon(
+            ui.painter(),
+            egui::Rect::from_center_size(
+                egui::pos2(rect.right() - 9.0, rect.center().y),
+                Vec2::splat(14.0),
+            ),
+            theme::Icon::ChevronDown,
+            theme::dim(),
+            1.4,
+        );
     }
 
     fn nav_item(&self, ui: &mut egui::Ui, icon: theme::Icon, label: &str, selected: bool) -> bool {
-        let height = 44.0;
+        let height = 40.0;
         let (rect, response) = ui.allocate_exact_size(
             Vec2::new(ui.available_width(), height),
             egui::Sense::click(),
         );
         let hovered = response.hovered();
         if selected {
-            // Baris terpilih: kaca biru lembut khas sidebar Tahoe.
             ui.painter()
-                .rect_filled(rect, CornerRadius::same(11), theme::accent_soft());
-            ui.painter().rect_stroke(
-                rect,
-                CornerRadius::same(11),
-                Stroke::new(1.0, Color32::from_rgba_unmultiplied(10, 132, 255, 90)),
-                StrokeKind::Inside,
-            );
+                .rect_filled(rect, CornerRadius::same(11), theme::nav_active_bg());
         } else if hovered {
             ui.painter()
                 .rect_filled(rect, CornerRadius::same(11), theme::card_hover());
         }
+        let fg = if selected {
+            theme::nav_active_fg()
+        } else {
+            theme::muted()
+        };
         let icon_rect = egui::Rect::from_center_size(
-            egui::pos2(rect.left() + 23.0, rect.center().y),
-            Vec2::splat(18.0),
+            egui::pos2(rect.left() + 20.0, rect.center().y),
+            Vec2::splat(17.0),
         );
-        theme::icon(
-            ui.painter(),
-            icon_rect,
-            icon,
-            if selected {
-                theme::text()
-            } else {
-                theme::muted()
-            },
-            1.5,
-        );
+        theme::icon(ui.painter(), icon_rect, icon, fg, 1.5);
         ui.painter().text(
-            egui::pos2(rect.left() + 42.0, rect.center().y),
+            egui::pos2(rect.left() + 40.0, rect.center().y),
             Align2::LEFT_CENTER,
             label,
-            FontId::proportional(14.0),
-            if selected {
-                theme::text()
-            } else {
-                theme::muted()
-            },
+            FontId::proportional(13.5),
+            if selected { fg } else { theme::text() },
         );
+        if selected {
+            theme::icon(
+                ui.painter(),
+                egui::Rect::from_center_size(
+                    egui::pos2(rect.right() - 16.0, rect.center().y),
+                    Vec2::splat(13.0),
+                ),
+                theme::Icon::ChevronRight,
+                fg,
+                1.4,
+            );
+        }
         response.clicked()
     }
 
-    fn sidebar_tip(&self, ui: &mut egui::Ui) {
-        let (title, body) = match self.tab {
-            Tab::Sheet => (
-                "Tips margin",
-                "Margin Normal 2,54 cm cocok untuk printer rumahan. Untuk hasil padat, pilih Sempit.",
-            ),
-            Tab::Convert => (
-                "Tips konversi",
-                "Untuk PDF ke Word yang rapi, sertakan gambar halaman. Teks tetap bisa diedit.",
-            ),
-            Tab::Tools => (
-                "Tips kualitas",
-                "Pas foto 3×4 sebaiknya minimal 300 DPI. Di bawah 150 DPI akan terlihat pecah.",
-            ),
-            Tab::Settings => (
-                "Tips studio",
-                "Isi nama studio, lalu aktifkan footer agar setiap lembar punya identitas.",
-            ),
-        };
+    fn sidebar_summary(&self, ui: &mut egui::Ui) {
+        let sheet = layout::compute(&self.settings);
+        let used = self.photos.len().min(sheet.capacity.max(1));
+        let capacity = sheet.capacity.max(1);
+        let ratio = (used as f32 / capacity as f32).clamp(0.0, 1.0);
+
         egui::Frame::new()
-            .fill(theme::card_fill())
-            .corner_radius(CornerRadius::same(14))
+            .fill(theme::input())
+            .corner_radius(CornerRadius::same(15))
             .stroke(Stroke::new(1.0, theme::border_soft()))
-            .inner_margin(Margin::same(14))
+            .inner_margin(Margin {
+                left: 13,
+                right: 13,
+                top: 11,
+                bottom: 12,
+            })
             .show(ui, |ui| {
                 ui.label(
-                    RichText::new(title)
+                    RichText::new("KAPASITAS LEMBAR")
+                        .size(9.0)
+                        .strong()
+                        .extra_letter_spacing(0.6)
+                        .color(theme::dim()),
+                );
+                ui.add_space(3.0);
+                ui.label(
+                    RichText::new(format!("{used} / {capacity} foto"))
                         .size(12.5)
                         .strong()
-                        .color(theme::accent()),
+                        .color(theme::text()),
                 );
-                ui.add_space(4.0);
-                ui.label(RichText::new(body).size(11.5).color(theme::muted()));
+                ui.add_space(7.0);
+
+                let (track, _) = ui.allocate_exact_size(
+                    Vec2::new(ui.available_width(), 6.0),
+                    egui::Sense::hover(),
+                );
+                ui.painter()
+                    .rect_filled(track, CornerRadius::same(3), theme::border_soft());
+                if ratio > 0.0 {
+                    let fill = egui::Rect::from_min_size(
+                        track.min,
+                        Vec2::new((track.width() * ratio).max(3.0), track.height()),
+                    );
+                    ui.painter()
+                        .rect_filled(fill, CornerRadius::same(3), theme::accent());
+                }
+                ui.add_space(6.0);
+                ui.label(
+                    RichText::new(format!(
+                        "{} · {} foto",
+                        short_paper(self.settings.paper.label()),
+                        self.photos.len()
+                    ))
+                    .size(9.5)
+                    .color(theme::dim()),
+                );
             });
     }
 
@@ -210,20 +296,24 @@ impl CetakinApp {
                 ui.spinner();
                 ui.label(
                     RichText::new("Memproses…")
-                        .size(11.5)
+                        .size(11.0)
                         .color(theme::yellow()),
                 );
             } else {
-                theme::dot(ui, theme::accent());
+                theme::dot(ui, theme::green());
                 ui.label(
                     RichText::new("Siap mencetak")
-                        .size(11.5)
+                        .size(11.0)
                         .color(theme::muted()),
                 );
             }
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.label(RichText::new("v0.1.0").size(9.5).color(theme::dim()));
+            });
         });
-        ui.label(RichText::new("v0.1.0").size(10.0).color(theme::dim()));
     }
+
+    // -------------------------------------------------------------- header
 
     pub(crate) fn header(&mut self, ui: &mut egui::Ui) {
         let mut action: Option<HeaderAction> = None;
@@ -231,52 +321,67 @@ impl CetakinApp {
             ui.vertical(|ui| {
                 ui.label(
                     RichText::new(self.tab.title())
-                        .size(24.0)
+                        .size(22.0)
                         .strong()
                         .color(theme::text()),
                 );
                 ui.label(
                     RichText::new(self.tab.subtitle())
-                        .size(12.0)
+                        .size(11.5)
                         .color(theme::muted()),
                 );
             });
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| match self.tab {
-                Tab::Sheet => {
-                    if theme::primary_button(ui, "Impor Foto").clicked() {
-                        action = Some(HeaderAction::Import);
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                // Avatar studio kecil di ujung kanan.
+                let (rect, _) = ui.allocate_exact_size(Vec2::splat(34.0), Sense::hover());
+                ui.painter()
+                    .rect_filled(rect, CornerRadius::same(10), theme::accent_soft());
+                ui.painter().text(
+                    rect.center(),
+                    Align2::CENTER_CENTER,
+                    self.initials(),
+                    FontId::proportional(11.5),
+                    theme::accent(),
+                );
+                ui.add_space(6.0);
+                match self.tab {
+                    Tab::Sheet => {
+                        if theme::primary_button(ui, "Impor Foto").clicked() {
+                            action = Some(HeaderAction::Import);
+                        }
+                        if theme::secondary_button(ui, "Simpan PDF").clicked() {
+                            action = Some(HeaderAction::Export);
+                        }
+                        if theme::secondary_button(ui, "Cetak").clicked() {
+                            action = Some(HeaderAction::Print);
+                        }
                     }
-                    if theme::secondary_button(ui, "Simpan PDF").clicked() {
-                        action = Some(HeaderAction::Export);
+                    Tab::Convert => {
+                        if theme::primary_button(ui, "Jalankan").clicked() {
+                            action = Some(HeaderAction::RunConvert);
+                        }
+                        if theme::secondary_button(ui, "Tambah File").clicked() {
+                            action = Some(HeaderAction::AddConvertFiles);
+                        }
                     }
-                    if theme::secondary_button(ui, "Cetak").clicked() {
-                        action = Some(HeaderAction::Print);
+                    Tab::Tools => {
+                        if theme::primary_button(ui, "Pilih Gambar").clicked() {
+                            action = Some(HeaderAction::PickInspector);
+                        }
+                        if theme::secondary_button(ui, "Segarkan Alat").clicked() {
+                            action = Some(HeaderAction::RefreshTools);
+                        }
                     }
-                }
-                Tab::Convert => {
-                    if theme::primary_button(ui, "Jalankan").clicked() {
-                        action = Some(HeaderAction::RunConvert);
-                    }
-                    if theme::secondary_button(ui, "Tambah File").clicked() {
-                        action = Some(HeaderAction::AddConvertFiles);
-                    }
-                }
-                Tab::Tools => {
-                    if theme::primary_button(ui, "Pilih Gambar").clicked() {
-                        action = Some(HeaderAction::PickInspector);
-                    }
-                    if theme::secondary_button(ui, "Segarkan Alat").clicked() {
-                        action = Some(HeaderAction::RefreshTools);
-                    }
-                }
-                Tab::Settings => {
-                    if theme::primary_button(ui, "Simpan Preferensi").clicked() {
-                        action = Some(HeaderAction::SavePrefs);
+                    Tab::Settings => {
+                        if theme::primary_button(ui, "Simpan Preferensi").clicked() {
+                            action = Some(HeaderAction::SavePrefs);
+                        }
+                        theme::badge(ui, theme::flavor().short_label(), theme::accent());
                     }
                 }
             });
         });
-        ui.add_space(14.0);
+        ui.add_space(12.0);
 
         match action {
             Some(HeaderAction::Import) => self.import_photos_dialog(),
@@ -290,6 +395,146 @@ impl CetakinApp {
             None => {}
         }
     }
+
+    // -------------------------------------------------------------- hero
+
+    /// Banner dashboard di atas tab Cetak Foto.
+    pub(crate) fn hero(&mut self, ui: &mut egui::Ui) {
+        let sheet = layout::compute(&self.settings);
+        let width = ui.available_width();
+        let height = 194.0;
+        let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
+        theme::paint_hero(ui.painter(), rect);
+
+        // Kartu statistik di bagian bawah hero.
+        let strip = egui::Rect::from_min_max(
+            egui::pos2(rect.left() + 22.0, rect.bottom() - 78.0),
+            egui::pos2(rect.right() - 22.0, rect.bottom() - 16.0),
+        );
+        ui.painter()
+            .rect_filled(strip, CornerRadius::same(16), theme::hero_card());
+        ui.painter().rect_stroke(
+            strip,
+            CornerRadius::same(16),
+            Stroke::new(1.0, theme::hero_card_border()),
+            StrokeKind::Inside,
+        );
+
+        // Sapaan.
+        let top_inner = egui::Rect::from_min_max(
+            egui::pos2(rect.left() + 26.0, rect.top() + 20.0),
+            egui::pos2(rect.right() - 26.0, strip.top() - 8.0),
+        );
+        let mut top = ui.new_child(
+            UiBuilder::new()
+                .max_rect(top_inner)
+                .layout(Layout::top_down(Align::Min)),
+        );
+        top.set_clip_rect(rect);
+        top.label(
+            RichText::new("CETAKIN WORKSPACE")
+                .size(9.5)
+                .strong()
+                .extra_letter_spacing(1.2)
+                .color(theme::hero_muted()),
+        );
+        top.add_space(5.0);
+        let name = if self.studio.trim().is_empty() {
+            "Cetakin".to_string()
+        } else {
+            shorten(self.studio.trim(), 24)
+        };
+        top.label(
+            RichText::new(format!("Halo, {name}!"))
+                .size(25.0)
+                .strong()
+                .color(theme::hero_text()),
+        );
+        top.add_space(3.0);
+        top.label(
+            RichText::new("Susun pas foto, atur margin, lalu ekspor PDF siap cetak.")
+                .size(11.5)
+                .color(theme::hero_muted()),
+        );
+
+        // Pill status di kanan atas hero.
+        let pill = egui::Rect::from_min_size(
+            egui::pos2(rect.right() - 158.0, rect.top() + 20.0),
+            Vec2::new(132.0, 28.0),
+        );
+        ui.painter().rect_filled(
+            pill,
+            CornerRadius::same(14),
+            Color32::from_rgba_unmultiplied(255, 255, 255, 22),
+        );
+        ui.painter().rect_stroke(
+            pill,
+            CornerRadius::same(14),
+            Stroke::new(1.0, Color32::from_white_alpha(36)),
+            StrokeKind::Inside,
+        );
+        ui.painter().circle_filled(
+            egui::pos2(pill.left() + 15.0, pill.center().y),
+            3.5,
+            theme::hero_glow(),
+        );
+        ui.painter().text(
+            egui::pos2(pill.left() + 25.0, pill.center().y),
+            Align2::LEFT_CENTER,
+            if self.photos.is_empty() {
+                "Belum ada foto"
+            } else {
+                "Siap diekspor"
+            },
+            FontId::proportional(10.5),
+            theme::hero_text(),
+        );
+
+        // Isi kartu statistik.
+        let stats_inner = strip.shrink2(Vec2::new(18.0, 8.0));
+        let mut stats = ui.new_child(
+            UiBuilder::new()
+                .max_rect(stats_inner)
+                .layout(Layout::left_to_right(Align::Center)),
+        );
+        stats.set_clip_rect(strip);
+
+        let dpi = self
+            .min_dpi(&sheet)
+            .map(|d| format!("{d:.0} DPI"))
+            .unwrap_or_else(|| format!("{} DPI", self.settings.dpi));
+        hero_stat(
+            &mut stats,
+            "Foto diimpor",
+            &format!("{} foto", self.photos.len()),
+        );
+        hero_divider(&mut stats);
+        hero_stat(
+            &mut stats,
+            "Kertas",
+            &format!(
+                "{} · {}",
+                short_paper(self.settings.paper.label()),
+                self.settings.orientation.label()
+            ),
+        );
+        hero_divider(&mut stats);
+        hero_stat(&mut stats, "Resolusi", &dpi);
+        hero_divider(&mut stats);
+        hero_stat(&mut stats, "Kapasitas", &format!("{} slot", sheet.capacity));
+
+        let mut import = false;
+        stats.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            if theme::primary_button(ui, "Impor Foto").clicked() {
+                import = true;
+            }
+        });
+        if import {
+            self.import_photos_dialog();
+        }
+    }
+
+    // -------------------------------------------------------------- island
 
     pub(crate) fn island_ui(&mut self, ctx: &egui::Context) {
         if let Some(toast) = &self.toast {
@@ -312,9 +557,9 @@ impl CetakinApp {
             IslandContent::Job { .. } => (theme::island_accent(), 262.0, 124.0, false),
             IslandContent::Toast { kind, .. } => {
                 let color = match kind {
-                    ToastKind::Success => theme::catppuccin::GREEN,
-                    ToastKind::Error => theme::catppuccin::RED,
-                    ToastKind::Info => theme::catppuccin::BLUE,
+                    ToastKind::Success => theme::green(),
+                    ToastKind::Error => theme::red(),
+                    ToastKind::Info => theme::blue(),
                 };
                 let force_open = *kind == ToastKind::Error;
                 (
@@ -349,12 +594,7 @@ impl CetakinApp {
                         offset: [0, 10],
                         blur: (20.0 + 16.0 * t) as u8,
                         spread: 0,
-                        color: Color32::from_rgba_unmultiplied(
-                            0x11,
-                            0x11,
-                            0x1b,
-                            (150.0 + 45.0 * t) as u8,
-                        ),
+                        color: Color32::from_black_alpha((150.0 + 45.0 * t) as u8),
                     }
                     .as_shape(rect, corner),
                 );
@@ -365,7 +605,7 @@ impl CetakinApp {
                         ..
                     }
                 ) {
-                    theme::catppuccin::RED
+                    theme::red()
                 } else if t > 0.5 {
                     accent
                 } else {
@@ -381,16 +621,16 @@ impl CetakinApp {
 
                 let inner = rect.shrink2(egui::vec2(14.0 + 2.0 * t, 9.0 + 3.0 * t));
                 let mut child = ui.new_child(
-                    egui::UiBuilder::new()
+                    UiBuilder::new()
                         .max_rect(inner)
                         .layout(Layout::top_down(Align::Min)),
                 );
                 child.set_clip_rect(inner);
 
-                // Samakan warna widget bawaan (spinner, progress) dengan Catppuccin.
+                // Samakan warna widget bawaan (spinner, progress) dengan tema.
                 let mut visuals = child.visuals().clone();
                 visuals.override_text_color = Some(theme::island_text());
-                visuals.extreme_bg_color = theme::catppuccin::SURFACE0;
+                visuals.extreme_bg_color = theme::island_field();
                 visuals.widgets.inactive.fg_stroke = Stroke::new(1.0, theme::island_muted());
                 visuals.widgets.active.fg_stroke = Stroke::new(1.0, accent);
                 visuals.selection.bg_fill = accent;
@@ -506,4 +746,44 @@ impl CetakinApp {
             ctx.request_repaint_after(Duration::from_millis(250));
         }
     }
+}
+
+/// Satu sel statistik di kartu hero.
+fn hero_stat(ui: &mut egui::Ui, label: &str, value: &str) {
+    let width = 112.0;
+    ui.allocate_ui_with_layout(Vec2::new(width, 46.0), Layout::top_down(Align::Min), |ui| {
+        ui.label(RichText::new(label).size(9.5).color(theme::muted()));
+        ui.add_space(3.0);
+        ui.add(
+            egui::Label::new(
+                RichText::new(value)
+                    .size(13.5)
+                    .strong()
+                    .color(theme::text()),
+            )
+            .truncate(),
+        );
+    });
+}
+
+fn hero_divider(ui: &mut egui::Ui) {
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(1.0, 30.0), Sense::hover());
+    ui.painter().line_segment(
+        [rect.center_top(), rect.center_bottom()],
+        Stroke::new(1.0, theme::border_soft()),
+    );
+}
+
+fn shorten(text: &str, max: usize) -> String {
+    if text.chars().count() <= max {
+        return text.to_string();
+    }
+    let mut out: String = text.chars().take(max.saturating_sub(1)).collect();
+    out.push('…');
+    out
+}
+
+/// "A4  (21 × 29,7 cm)" → "A4"
+fn short_paper(label: &str) -> &str {
+    label.split("  (").next().unwrap_or(label).trim()
 }

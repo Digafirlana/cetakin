@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::Duration;
 
-use eframe::egui::{self, Color32, Margin, Stroke, Vec2};
+use eframe::egui::{self, Color32, Margin, Vec2};
 
 use crate::convert::ToolStatus;
 use crate::image_utils;
@@ -85,12 +85,18 @@ impl CetakinApp {
             .ok()
             .and_then(|raw| serde_json::from_str(&raw).ok());
 
-        let settings = prefs.as_ref().map(|p| p.sheet.clone()).unwrap_or_default();
-        let studio = prefs.as_ref().map(|p| p.studio.clone()).unwrap_or_default();
-        let last_dir = prefs.and_then(|p| p.last_dir);
+        let (settings, studio, last_dir, flavor) = match prefs {
+            Some(p) => (p.sheet, p.studio, p.last_dir, p.theme),
+            None => (
+                SheetSettings::default(),
+                String::new(),
+                None,
+                theme::Flavor::default(),
+            ),
+        };
 
-        // Aplikasi selalu memakai tema gelap.
-        theme::set_dark(true);
+        // Terapkan palet Catppuccin pilihan pengguna.
+        theme::set_flavor(flavor);
         theme::apply(&cc.egui_ctx);
 
         Self {
@@ -218,16 +224,15 @@ impl eframe::App for CetakinApp {
         theme::paint_background(ui);
 
         egui::Panel::left("cetakin-sidebar")
-            .exact_size(228.0)
+            .exact_size(260.0)
             .resizable(false)
             .frame(
                 egui::Frame::new()
-                    .fill(theme::sidebar())
-                    .stroke(Stroke::new(1.0, theme::border_soft()))
+                    .fill(Color32::TRANSPARENT)
                     .inner_margin(Margin {
-                        left: 18,
-                        right: 18,
-                        top: 18,
+                        left: 16,
+                        right: 4,
+                        top: 16,
                         bottom: 16,
                     }),
             )
@@ -238,14 +243,18 @@ impl eframe::App for CetakinApp {
                 egui::Frame::new()
                     .fill(Color32::TRANSPARENT)
                     .inner_margin(Margin {
-                        left: 24,
-                        right: 24,
-                        top: 18,
+                        left: 18,
+                        right: 22,
+                        top: 16,
                         bottom: 18,
                     }),
             )
             .show(ui, |ui| {
                 self.header(ui);
+                if self.tab == Tab::Sheet {
+                    self.hero(ui);
+                    ui.add_space(16.0);
+                }
                 match self.tab {
                     Tab::Sheet => self.sheet_tab(ui),
                     Tab::Convert => self.convert_tab(ui),
