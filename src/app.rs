@@ -22,7 +22,9 @@ pub use crate::photos::PhotoItem;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tab {
+    Home,
     Sheet,
+    Scan,
     Convert,
     Tools,
     Settings,
@@ -31,7 +33,9 @@ pub enum Tab {
 impl Tab {
     pub fn title(self) -> &'static str {
         match self {
+            Tab::Home => "Beranda",
             Tab::Sheet => "Cetak Foto",
+            Tab::Scan => "Pemindai Dokumen",
             Tab::Convert => "Konversi Dokumen",
             Tab::Tools => "Alat & Diagnostik",
             Tab::Settings => "Pengaturan",
@@ -40,7 +44,9 @@ impl Tab {
 
     pub fn subtitle(self) -> &'static str {
         match self {
+            Tab::Home => "Selamat datang di Cetakin  pilih fitur atau impor file untuk memulai.",
             Tab::Sheet => "Susun pas foto di kertas, atur margin, lalu cetak.",
+            Tab::Scan => "Foto miring jadi scan rapi  koreksi perspektif & putihkan kertas.",
             Tab::Convert => "PDF, Word, dan gambar",
             Tab::Tools => "Cek kualitas foto, kapasitas kertas, dan printer.",
             Tab::Settings => "Preferensi studio, dependensi, dan informasi aplikasi.",
@@ -63,6 +69,7 @@ pub struct CetakinApp {
     pub preview_pan: Vec2,
     pub show_guides: bool,
     pub convert: ConvertState,
+    pub scan: crate::ui_scan::ScanState,
     pub tools: ToolStatus,
     pub job: Option<Job>,
     pub toast: Option<Toast>,
@@ -95,12 +102,12 @@ impl CetakinApp {
             ),
         };
 
-        // Terapkan palet Catppuccin pilihan pengguna.
+        // Terapkan mode tampilan pilihan pengguna (Tahoe terang/gelap).
         theme::set_flavor(flavor);
         theme::apply(&cc.egui_ctx);
 
         Self {
-            tab: Tab::Sheet,
+            tab: Tab::Home,
             settings,
             photos: Vec::new(),
             active_photo: 0,
@@ -110,6 +117,7 @@ impl CetakinApp {
             preview_pan: Vec2::ZERO,
             show_guides: true,
             convert: ConvertState::new(last_dir),
+            scan: crate::ui_scan::ScanState::default(),
             tools: ToolStatus::detect(),
             job: None,
             toast: None,
@@ -142,11 +150,19 @@ impl CetakinApp {
             self.confirm_clear = false;
             self.confirm_reset = false;
         }
-        if open && self.tab != Tab::Convert {
-            self.import_photos_dialog();
+        if open {
+            if self.tab == Tab::Scan {
+                self.pick_scan_source(ctx);
+            } else if self.tab != Tab::Convert {
+                self.import_photos_dialog();
+            }
         }
-        if save && self.tab == Tab::Sheet {
-            self.export_pdf_dialog();
+        if save {
+            if self.tab == Tab::Sheet {
+                self.export_pdf_dialog();
+            } else if self.tab == Tab::Scan {
+                self.scan_save_image();
+            }
         }
         if print && self.tab == Tab::Sheet {
             self.print_now();
@@ -176,6 +192,17 @@ impl CetakinApp {
             .collect();
 
         match self.tab {
+            Tab::Home => {
+                // Di beranda, drop gambar langsung ke Cetak Foto
+                if !images.is_empty() {
+                    self.add_photos(images);
+                    self.tab = Tab::Sheet;
+                } else if !docs.is_empty() {
+                    self.convert.add_files(docs);
+                    self.tab = Tab::Convert;
+                    self.toast_info("File ditambahkan", "Pilih operasi lalu jalankan konversi.");
+                }
+            }
             Tab::Sheet => {
                 if !images.is_empty() {
                     self.add_photos(images);
@@ -184,6 +211,24 @@ impl CetakinApp {
                     self.convert.add_files(docs);
                     self.toast_info(
                         "File dokumen diterima",
+                        "Buka tab Konversi untuk memprosesnya.",
+                    );
+                }
+            }
+            Tab::Scan => {
+                if let Some(img) = images.first() {
+                    let path = img.clone();
+                    self.load_scan_source(ctx, path);
+                    if images.len() > 1 {
+                        self.toast_info(
+                            "Satu foto dimuat",
+                            "Pemindai memproses satu dokumen setiap kali.",
+                        );
+                    }
+                } else if !docs.is_empty() {
+                    self.convert.add_files(docs);
+                    self.toast_info(
+                        "Dokumen ditambahkan",
                         "Buka tab Konversi untuk memprosesnya.",
                     );
                 }
@@ -256,7 +301,9 @@ impl eframe::App for CetakinApp {
                     ui.add_space(16.0);
                 }
                 match self.tab {
+                    Tab::Home => self.home_tab(ui),
                     Tab::Sheet => self.sheet_tab(ui),
+                    Tab::Scan => self.scan_tab(ui),
                     Tab::Convert => self.convert_tab(ui),
                     Tab::Tools => self.tools_tab(ui),
                     Tab::Settings => self.settings_tab(ui),

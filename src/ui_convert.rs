@@ -747,7 +747,7 @@ impl CetakinApp {
                         RichText::new(format!("Jalankan {}", self.convert.op.title()))
                             .size(13.5)
                             .strong()
-                            .color(Color32::WHITE),
+                            .color(theme::on_accent()),
                     )
                     .fill(theme::accent())
                     .stroke(Stroke::new(

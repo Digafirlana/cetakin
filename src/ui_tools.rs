@@ -717,7 +717,7 @@ impl CetakinApp {
         let mut chosen = None;
         theme::card().show(ui, |ui| {
             ui.horizontal(|ui| {
-                card_title(ui, theme::Icon::Settings, "Tema Tampilan");
+                card_title(ui, theme::Icon::Settings, "Mode Tampilan");
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     theme::badge(ui, theme::flavor().short_label(), theme::accent());
                 });
@@ -725,8 +725,8 @@ impl CetakinApp {
             ui.add_space(5.0);
             ui.label(
                 RichText::new(
-                    "Pilih palet Catppuccin. Frappé paling lembut, \
-                     Mocha paling pekat dan nyaman saat malam.",
+                    "Hanya dua mode: terang dan gelap. Keduanya memakai gaya \
+                     macOS Tahoe dengan aksen biru sistem.",
                 )
                 .size(11.0)
                 .color(theme::muted()),
@@ -741,7 +741,7 @@ impl CetakinApp {
             });
             ui.add_space(8.0);
             ui.label(
-                RichText::new("Pilihan tema ikut tersimpan bersama preferensi.")
+                RichText::new("Mode tampilan ikut tersimpan bersama preferensi.")
                     .size(10.0)
                     .color(theme::dim()),
             );
@@ -751,10 +751,13 @@ impl CetakinApp {
             theme::set_flavor(f);
             theme::apply(ui.ctx());
             ui.ctx().request_repaint();
-            // Simpan langsung agar tema tidak hilang bila aplikasi ditutup paksa.
+            // Simpan langsung agar mode tidak hilang bila aplikasi ditutup paksa.
             self.prefs_dirty = true;
             self.save_prefs();
-            self.toast_info("Tema diganti", &format!("{} · {}", f.label(), f.tagline()));
+            self.toast_info(
+                "Mode tampilan diganti",
+                &format!("{} · {}", f.label(), f.tagline()),
+            );
         }
     }
 
@@ -994,7 +997,7 @@ impl CetakinApp {
                     ui.painter(),
                     rect.shrink(10.0),
                     theme::Icon::Print,
-                    Color32::WHITE,
+                    theme::on_accent(),
                     1.8,
                 );
                 ui.vertical(|ui| {

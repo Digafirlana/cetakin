@@ -712,7 +712,7 @@ impl CetakinApp {
         painter.rect_filled(
             page.translate(Vec2::new(0.0, 9.0)).expand(3.0),
             CornerRadius::same(3),
-            Color32::from_black_alpha(110),
+            Color32::from_black_alpha(if theme::is_dark() { 110 } else { 52 }),
         );
         painter.rect_filled(page, CornerRadius::same(2), Color32::WHITE);
 
@@ -1041,10 +1041,7 @@ impl CetakinApp {
                         let border = if active {
                             Stroke::new(2.0, theme::accent())
                         } else if response.hovered() {
-                            Stroke::new(
-                                1.0,
-                                Color32::from_rgba_unmultiplied(255, 255, 255, 70),
-                            )
+                            Stroke::new(1.0, theme::dim())
                         } else {
                             Stroke::new(1.0, theme::border())
                         };
@@ -1080,7 +1077,7 @@ impl CetakinApp {
                                 ui.painter(),
                                 badge,
                                 theme::Icon::Check,
-                                Color32::BLACK,
+                                theme::on_accent(),
                                 1.6,
                             );
                         }
@@ -1280,7 +1277,7 @@ fn compact_button(ui: &mut egui::Ui, label: &str) -> bool {
 fn preset_chip(ui: &mut egui::Ui, label: &str, selected: bool) -> bool {
     ui.add(
         egui::Button::new(RichText::new(label).size(11.5).color(if selected {
-            Color32::BLACK
+            theme::on_accent()
         } else {
             theme::text()
         }))

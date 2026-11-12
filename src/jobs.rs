@@ -13,6 +13,7 @@ pub enum JobTag {
     Sheet,
     Print,
     Convert,
+    Scan,
 }
 
 #[derive(Clone)]
@@ -124,6 +125,17 @@ impl CetakinApp {
                         self.convert.results = res.files.clone();
                         self.convert.note = res.note.clone();
                     }
+                    if tag == Some(JobTag::Scan) {
+                        self.scan.last_saved = res.files.clone();
+                        if self.scan.add_after_save {
+                            self.scan.add_after_save = false;
+                            let images: Vec<_> = res.files.clone();
+                            if !images.is_empty() {
+                                self.add_photos(images);
+                                self.tab = crate::app::Tab::Sheet;
+                            }
+                        }
+                    }
                     if !res.files.is_empty() {
                         self.last_output = res.files.clone();
                     }
@@ -133,7 +145,10 @@ impl CetakinApp {
                         self.toast_success(&res.title, &res.note);
                     }
                 }
-                Err(e) => self.toast_error("Proses gagal", &e),
+                Err(e) => {
+                    self.scan.add_after_save = false;
+                    self.toast_error("Proses gagal", &e);
+                }
             }
             ctx.request_repaint();
         }

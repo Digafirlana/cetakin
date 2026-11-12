@@ -57,6 +57,8 @@ enum HeaderAction {
     PickInspector,
     RefreshTools,
     SavePrefs,
+    ScanPick,
+    ScanSave,
 }
 
 impl CetakinApp {
@@ -99,7 +101,9 @@ impl CetakinApp {
                 theme::section_label(ui, "Ruang kerja");
                 ui.add_space(7.0);
                 let main_items = [
+                    (Tab::Home, theme::Icon::Stack, "Beranda"),
                     (Tab::Sheet, theme::Icon::Photo, "Cetak Foto"),
+                    (Tab::Scan, theme::Icon::Scan, "Pemindai"),
                     (Tab::Convert, theme::Icon::Convert, "Konversi"),
                     (Tab::Tools, theme::Icon::Tools, "Alat"),
                 ];
@@ -345,6 +349,7 @@ impl CetakinApp {
                 );
                 ui.add_space(6.0);
                 match self.tab {
+                    Tab::Home => {}
                     Tab::Sheet => {
                         if theme::primary_button(ui, "Impor Foto").clicked() {
                             action = Some(HeaderAction::Import);
@@ -362,6 +367,14 @@ impl CetakinApp {
                         }
                         if theme::secondary_button(ui, "Tambah File").clicked() {
                             action = Some(HeaderAction::AddConvertFiles);
+                        }
+                    }
+                    Tab::Scan => {
+                        if theme::primary_button(ui, "Pilih Foto").clicked() {
+                            action = Some(HeaderAction::ScanPick);
+                        }
+                        if theme::secondary_button(ui, "Simpan Hasil").clicked() {
+                            action = Some(HeaderAction::ScanSave);
                         }
                     }
                     Tab::Tools => {
@@ -392,6 +405,8 @@ impl CetakinApp {
             Some(HeaderAction::PickInspector) => self.pick_inspector(),
             Some(HeaderAction::RefreshTools) => self.refresh_tools(),
             Some(HeaderAction::SavePrefs) => self.save_prefs_manual(),
+            Some(HeaderAction::ScanPick) => self.pick_scan_source(ui.ctx()),
+            Some(HeaderAction::ScanSave) => self.scan_save_image(),
             None => {}
         }
     }
@@ -462,15 +477,12 @@ impl CetakinApp {
             egui::pos2(rect.right() - 158.0, rect.top() + 20.0),
             Vec2::new(132.0, 28.0),
         );
-        ui.painter().rect_filled(
-            pill,
-            CornerRadius::same(14),
-            Color32::from_rgba_unmultiplied(255, 255, 255, 22),
-        );
+        ui.painter()
+            .rect_filled(pill, CornerRadius::same(14), theme::hero_card());
         ui.painter().rect_stroke(
             pill,
             CornerRadius::same(14),
-            Stroke::new(1.0, Color32::from_white_alpha(36)),
+            Stroke::new(1.0, theme::hero_card_border()),
             StrokeKind::Inside,
         );
         ui.painter().circle_filled(
@@ -594,7 +606,11 @@ impl CetakinApp {
                         offset: [0, 10],
                         blur: (20.0 + 16.0 * t) as u8,
                         spread: 0,
-                        color: Color32::from_black_alpha((150.0 + 45.0 * t) as u8),
+                        color: Color32::from_black_alpha(if theme::is_dark() {
+                            (120.0 + 45.0 * t) as u8
+                        } else {
+                            (32.0 + 26.0 * t) as u8
+                        }),
                     }
                     .as_shape(rect, corner),
                 );

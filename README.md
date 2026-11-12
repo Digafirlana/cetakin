@@ -22,7 +22,15 @@ Dibuat dengan **Rust + eframe/egui** (renderer glow/OpenGL). Berjalan di **Windo
 - Cetak langsung: Linux via `lp` (CUPS), Windows membuka PDF di penampil untuk Ctrl+P.
 - Statistik lembar: jumlah foto, margin efektif, area terpakai, estimasi DPI minimum.
 
-### 2. Konversi
+### 2. Pemindai Dokumen
+- **Koreksi perspektif** otomatis: foto dokumen miring dirapikan menjadi persegi.
+- Deteksi tepi kertas otomatis, dengan **4 titik sudut yang bisa digeser** manual.
+- **Pemutihan kertas** dan perataan pencahayaan, termasuk bayangan dan tint warna.
+- Preset **Warna**, **Dokumen** (abu-abu tajam), dan **Hitam Putih**.
+- Rotasi 90°, pratinjau hasil real-time, simpan **PNG/JPEG/PDF**.
+- Hasil scan bisa langsung **ditambahkan ke Cetak Foto**.
+
+### 3. Konversi
 - **Gambar → PDF** (satu gambar per halaman).
 - **PDF → PNG** (render 150/300/600 DPI, rentang halaman opsional).
 - **PDF → Word** (teks yang bisa diedit + gambar halaman opsional).
@@ -31,25 +39,25 @@ Dibuat dengan **Rust + eframe/egui** (renderer glow/OpenGL). Berjalan di **Windo
 - **Kompres gambar** (resize sisi terpanjang, kualitas, JPEG/PNG/WebP).
 - Daftar file drag & drop, folder output, progress non-blocking, hasil bisa langsung dibuka.
 
-### 3. Alat & Diagnostik
+### 4. Alat & Diagnostik
 - **Inspektur kualitas foto**: dimensi, ukuran file, estimasi DPI untuk 2×3/3×4/4×6 + rekomendasi.
 - **Kalkulator kapasitas kertas**: grid & jumlah foto per lembar, tabel perbandingan cepat.
 - **Daftar printer** dan cetak PDF terakhir.
 - **Status komponen pendukung** (LibreOffice, Poppler, MuPDF, ImageMagick, CUPS).
 
-### 4. Antarmuka
+### 5. Antarmuka
 - **Dashboard modern**: latar lavender bergradasi, sidebar kartu melayang, banner sambutan,
   kartu statistik, dan permukaan putih membulat dengan bayangan lembut.
-- **Tema Catppuccin yang bisa diganti**: Frappé, Macchiato, dan Mocha
-  (gelap) — pilih langsung di tab **Pengaturan → Tema Tampilan**. Tema tersimpan
-  bersama preferensi. Tersedia juga tema alternatif **Tahoe Gelap**.
+- **Dua mode tampilan**: Terang dan Gelap bergaya macOS Tahoe, aksen biru sistem —
+  pilih langsung di tab **Pengaturan → Mode Tampilan**. Pilihan tersimpan bersama
+  preferensi dan langsung diterapkan tanpa perlu restart.
 - **Dynamic Island** di tengah atas: progress job serta toast sukses/error/info.
-- **Notifikasi Catppuccin**: kapsul membulat penuh, warna lembut, aksen hijau/merah/biru sesuai status.
+- **Notifikasi adaptif**: kapsul membulat penuh, warna lembut, aksen hijau/merah/biru sesuai status.
 - Ringkas saat berjalan, membesar saat hover/klik; error tetap terbuka sampai ditutup.
 - Animasi buka/tutup halus tanpa dependency tambahan.
 
 ### 5. Pengaturan
-- **Tema tampilan** Catppuccin Frappé/Macchiato/Mocha (plus Tahoe Gelap).
+- **Mode tampilan** Terang / Gelap (gaya macOS Tahoe).
 - Nama studio dan footer.
 - Bawaan kertas, orientasi, ukuran foto, margin, DPI, auto-center, batch.
 - Simpan/reset preferensi, lokasi file konfigurasi, hasil terakhir.
@@ -128,6 +136,7 @@ CARGO_PROFILE_DEV_DEBUG=2 CARGO_PROFILE_DEV_STRIP=none cargo run
 
 Drag & drop file ke jendela:
 - Tab **Cetak Foto** → gambar masuk ke daftar foto, dokumen dialihkan ke Konversi.
+- Tab **Pemindai** → gambar pertama dimuat sebagai sumber scan.
 - Tab **Konversi** → semua file didukung ditambahkan.
 - Tab **Alat** → gambar pertama dipilih sebagai objek inspeksi.
 
@@ -162,8 +171,10 @@ src/
   pdf_export.rs   Ekspor lembar foto & PDF teks
   convert.rs      Konversi gambar/PDF/Word, printer, deteksi tool
   docx.rs         Penulis & pembaca DOCX
-  theme.rs        Palet Catppuccin, kartu, tombol, ikon garis
+  scan.rs         Deteksi tepi, koreksi perspektif, pemutihan dokumen
+  theme.rs        Palet Tahoe terang/gelap, kartu, tombol, ikon garis
   ui_sheet.rs     Tab Cetak Foto
+  ui_scan.rs      Tab Pemindai Dokumen
   ui_convert.rs   Tab Konversi
   ui_tools.rs     Tab Alat & Pengaturan
 ```

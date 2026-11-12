@@ -8,76 +8,70 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 // Palet tema
 // ---------------------------------------------------------------------------
 //
-// Aplikasi memakai Catppuccin sebagai tema utama:
-//   • Frappé    — gelap kebiruan
-//   • Macchiato — gelap keunguan
-//   • Mocha     — gelap pekat (tampilan bawaan)
+// Aplikasi hanya menyediakan dua mode tampilan, keduanya bergaya macOS Tahoe:
+//   • Tahoe Terang — latar putih/abu lembut, aksen biru sistem
+//   • Tahoe Gelap  — latar arang pekat, aksen biru sistem (bawaan)
 //
-// "Tahoe" disimpan sebagai tema gelap alternatif bergaya macOS.
-// Palet resmi: https://catppuccin.com/palette
+// Semua warna permukaan sengaja opak (bukan transparan) agar tidak ada
+// artefak blending saat tema berganti.
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Flavor {
-    Frappe,
-    Macchiato,
-    /// Tema bawaan. Alias menjaga preferensi lama yang masih menyimpan "latte".
+    /// Mode terang.
+    #[serde(alias = "light", alias = "tahoe_light")]
+    TahoeLight,
+    /// Mode gelap (bawaan). Alias menjaga preferensi lama tetap terbaca.
     #[default]
-    #[serde(alias = "latte")]
-    Mocha,
-    Tahoe,
+    #[serde(
+        alias = "dark",
+        alias = "tahoe",
+        alias = "latte",
+        alias = "frappe",
+        alias = "macchiato",
+        alias = "mocha"
+    )]
+    TahoeDark,
 }
 
 impl Flavor {
-    pub const ALL: [Flavor; 4] = [
-        Flavor::Frappe,
-        Flavor::Macchiato,
-        Flavor::Mocha,
-        Flavor::Tahoe,
-    ];
+    pub const ALL: [Flavor; 2] = [Flavor::TahoeLight, Flavor::TahoeDark];
 
     pub fn label(self) -> &'static str {
         match self {
-            Flavor::Frappe => "Catppuccin Frappé",
-            Flavor::Macchiato => "Catppuccin Macchiato",
-            Flavor::Mocha => "Catppuccin Mocha",
-            Flavor::Tahoe => "Tahoe Gelap",
+            Flavor::TahoeLight => "Tahoe Terang",
+            Flavor::TahoeDark => "Tahoe Gelap",
         }
     }
 
     pub fn short_label(self) -> &'static str {
         match self {
-            Flavor::Frappe => "Frappé",
-            Flavor::Macchiato => "Macchiato",
-            Flavor::Mocha => "Mocha",
-            Flavor::Tahoe => "Tahoe",
+            Flavor::TahoeLight => "Terang",
+            Flavor::TahoeDark => "Gelap",
         }
     }
 
     pub fn tagline(self) -> &'static str {
         match self {
-            Flavor::Frappe => "Gelap kebiruan",
-            Flavor::Macchiato => "Gelap keunguan",
-            Flavor::Mocha => "Gelap pekat",
-            Flavor::Tahoe => "Kaca macOS",
+            Flavor::TahoeLight => "Putih bersih",
+            Flavor::TahoeDark => "Arang pekat",
         }
     }
 
     fn index(self) -> usize {
         match self {
-            Flavor::Frappe => 0,
-            Flavor::Macchiato => 1,
-            Flavor::Mocha => 2,
-            Flavor::Tahoe => 3,
+            Flavor::TahoeLight => 0,
+            Flavor::TahoeDark => 1,
         }
     }
 
     fn from_index(i: usize) -> Flavor {
-        Self::ALL.get(i).copied().unwrap_or(Flavor::Mocha)
+        Self::ALL.get(i).copied().unwrap_or(Flavor::TahoeDark)
     }
 }
 
-static FLAVOR: AtomicUsize = AtomicUsize::new(2);
+/// Indeks `Flavor::TahoeDark` di dalam `Flavor::ALL`.
+static FLAVOR: AtomicUsize = AtomicUsize::new(1);
 
 pub fn flavor() -> Flavor {
     Flavor::from_index(FLAVOR.load(Ordering::Relaxed))
@@ -103,6 +97,17 @@ const fn rgb(hex: u32) -> Color32 {
 #[inline]
 fn alpha(color: Color32, a: u8) -> Color32 {
     Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), a)
+}
+
+/// Warna transparan dalam format *premultiplied* — aman dipakai di `const`.
+#[inline]
+const fn tint(r: u8, g: u8, b: u8, a: u8) -> Color32 {
+    Color32::from_rgba_premultiplied(
+        ((r as u16 * a as u16) / 255) as u8,
+        ((g as u16 * a as u16) / 255) as u8,
+        ((b as u16 * a as u16) / 255) as u8,
+        a,
+    )
 }
 
 /// Seluruh warna yang dipakai UI. Dihitung ringan setiap pemanggilan.
@@ -149,180 +154,94 @@ pub struct Palette {
     pub island_field: Color32,
 }
 
-const FRAPPE: Palette = Palette {
-    dark: true,
-    bg: rgb(0x303446),
-    bg_top: rgb(0x363a4f),
-    bg_bottom: rgb(0x232634),
-    glow: rgb(0xca9ee6),
-    sidebar: rgb(0x292c3c),
-    card: rgb(0x414559),
-    card_hover: rgb(0x51576d),
-    input: rgb(0x363a4f),
-    canvas: rgb(0x232634),
-    border: Color32::from_rgba_premultiplied(198, 208, 245, 22),
-    border_soft: Color32::from_rgba_premultiplied(198, 208, 245, 12),
-    shadow: Color32::from_black_alpha(70),
-    text: rgb(0xc6d0f5),
-    muted: rgb(0xa5adce),
-    dim: rgb(0x838ba7),
-    accent: rgb(0xca9ee6),
-    accent_soft: Color32::from_rgba_premultiplied(202, 158, 230, 34),
-    on_accent: rgb(0x232634),
-    yellow: rgb(0xe5c890),
-    orange: rgb(0xef9f76),
-    red: rgb(0xe78284),
-    blue: rgb(0x8caaee),
-    green: rgb(0xa6d189),
-    hero_top: rgb(0x191c26),
-    hero_bottom: rgb(0x292c3c),
-    hero_glow: rgb(0xca9ee6),
-    hero_text: rgb(0xf2f4ff),
-    hero_muted: rgb(0xb5bfe2),
-    hero_card: rgb(0x414559),
-    hero_card_border: Color32::from_rgba_premultiplied(198, 208, 245, 24),
-    nav_active_bg: rgb(0xca9ee6),
-    nav_active_fg: rgb(0x232634),
-    island: rgb(0x232634),
-    island_border: rgb(0x51576d),
-    island_text: rgb(0xc6d0f5),
-    island_muted: rgb(0xa5adce),
-    island_dim: rgb(0x838ba7),
-    island_field: rgb(0x414559),
-};
-
-const MACCHIATO: Palette = Palette {
-    dark: true,
-    bg: rgb(0x24273a),
-    bg_top: rgb(0x2a2e44),
-    bg_bottom: rgb(0x181926),
-    glow: rgb(0xc6a0f6),
-    sidebar: rgb(0x1e2030),
-    card: rgb(0x363a4f),
-    card_hover: rgb(0x494d64),
-    input: rgb(0x2a2e44),
-    canvas: rgb(0x181926),
-    border: Color32::from_rgba_premultiplied(202, 211, 245, 22),
-    border_soft: Color32::from_rgba_premultiplied(202, 211, 245, 12),
-    shadow: Color32::from_black_alpha(76),
-    text: rgb(0xcad3f5),
-    muted: rgb(0xa5adcb),
-    dim: rgb(0x8087a2),
-    accent: rgb(0xc6a0f6),
-    accent_soft: Color32::from_rgba_premultiplied(198, 160, 246, 34),
-    on_accent: rgb(0x181926),
-    yellow: rgb(0xeed49f),
-    orange: rgb(0xf5a97f),
-    red: rgb(0xed8796),
-    blue: rgb(0x8aadf4),
-    green: rgb(0xa6da95),
-    hero_top: rgb(0x14151f),
-    hero_bottom: rgb(0x24273a),
-    hero_glow: rgb(0xc6a0f6),
-    hero_text: rgb(0xf0f2ff),
-    hero_muted: rgb(0xb8c0e0),
-    hero_card: rgb(0x363a4f),
-    hero_card_border: Color32::from_rgba_premultiplied(202, 211, 245, 24),
-    nav_active_bg: rgb(0xc6a0f6),
-    nav_active_fg: rgb(0x181926),
-    island: rgb(0x181926),
-    island_border: rgb(0x494d64),
-    island_text: rgb(0xcad3f5),
-    island_muted: rgb(0xa5adcb),
-    island_dim: rgb(0x8087a2),
-    island_field: rgb(0x363a4f),
-};
-
-const MOCHA: Palette = Palette {
-    dark: true,
-    bg: rgb(0x1e1e2e),
-    bg_top: rgb(0x252537),
-    bg_bottom: rgb(0x11111b),
-    glow: rgb(0xcba6f7),
-    sidebar: rgb(0x181825),
-    card: rgb(0x313244),
-    card_hover: rgb(0x45475a),
-    input: rgb(0x252537),
-    canvas: rgb(0x11111b),
-    border: Color32::from_rgba_premultiplied(205, 214, 244, 22),
-    border_soft: Color32::from_rgba_premultiplied(205, 214, 244, 12),
-    shadow: Color32::from_black_alpha(82),
-    text: rgb(0xcdd6f4),
-    muted: rgb(0xa6adc8),
-    dim: rgb(0x7f849c),
-    accent: rgb(0xcba6f7),
-    accent_soft: Color32::from_rgba_premultiplied(203, 166, 247, 34),
-    on_accent: rgb(0x11111b),
-    yellow: rgb(0xf9e2af),
-    orange: rgb(0xfab387),
-    red: rgb(0xf38ba8),
-    blue: rgb(0x89b4fa),
-    green: rgb(0xa6e3a1),
-    hero_top: rgb(0x12121b),
-    hero_bottom: rgb(0x1e1e2e),
-    hero_glow: rgb(0xcba6f7),
-    hero_text: rgb(0xf2f4ff),
-    hero_muted: rgb(0xbac2de),
-    hero_card: rgb(0x313244),
-    hero_card_border: Color32::from_rgba_premultiplied(205, 214, 244, 24),
-    nav_active_bg: rgb(0xcba6f7),
-    nav_active_fg: rgb(0x11111b),
-    island: rgb(0x11111b),
-    island_border: rgb(0x45475a),
-    island_text: rgb(0xcdd6f4),
-    island_muted: rgb(0xa6adc8),
-    island_dim: rgb(0x7f849c),
-    island_field: rgb(0x313244),
-};
-
-const TAHOE: Palette = Palette {
+const TAHOE_DARK: Palette = Palette {
     dark: true,
     bg: rgb(0x1c1c1e),
-    bg_top: rgb(0x28282e),
-    bg_bottom: rgb(0x131316),
+    bg_top: rgb(0x242427),
+    bg_bottom: rgb(0x141416),
     glow: rgb(0x0a84ff),
-    sidebar: Color32::from_rgba_premultiplied(16, 16, 16, 16),
-    card: Color32::from_rgba_premultiplied(20, 20, 20, 20),
-    card_hover: Color32::from_rgba_premultiplied(34, 34, 34, 34),
-    input: Color32::from_rgba_premultiplied(0, 0, 0, 90),
-    canvas: Color32::from_rgba_premultiplied(0, 0, 0, 110),
-    border: Color32::from_rgba_premultiplied(30, 30, 30, 30),
-    border_soft: Color32::from_rgba_premultiplied(16, 16, 16, 16),
-    shadow: Color32::from_black_alpha(58),
+    sidebar: rgb(0x232326),
+    card: rgb(0x2c2c2e),
+    card_hover: rgb(0x3a3a3c),
+    input: rgb(0x1a1a1c),
+    canvas: rgb(0x141416),
+    border: tint(255, 255, 255, 30),
+    border_soft: tint(255, 255, 255, 16),
+    shadow: Color32::from_black_alpha(110),
     text: rgb(0xf5f5f7),
-    muted: Color32::from_rgba_premultiplied(150, 150, 150, 150),
-    dim: Color32::from_rgba_premultiplied(96, 96, 96, 96),
+    muted: rgb(0xaeaeb2),
+    dim: rgb(0x8e8e93),
     accent: rgb(0x0a84ff),
-    accent_soft: Color32::from_rgba_premultiplied(2, 29, 56, 56),
+    accent_soft: tint(10, 132, 255, 46),
     on_accent: rgb(0xffffff),
     yellow: rgb(0xffd60a),
-    orange: rgb(0xff9500),
-    red: rgb(0xff3b30),
+    orange: rgb(0xff9f0a),
+    red: rgb(0xff453a),
     blue: rgb(0x0a84ff),
-    green: rgb(0x28c840),
-    hero_top: rgb(0x101014),
-    hero_bottom: rgb(0x1d1d24),
+    green: rgb(0x30d158),
+    hero_top: rgb(0x1a1a1d),
+    hero_bottom: rgb(0x26262b),
     hero_glow: rgb(0x0a84ff),
     hero_text: rgb(0xf5f5f7),
     hero_muted: rgb(0xa6a6ad),
-    hero_card: Color32::from_rgba_premultiplied(34, 34, 38, 235),
-    hero_card_border: Color32::from_rgba_premultiplied(255, 255, 255, 20),
-    nav_active_bg: rgb(0xf5f5f7),
-    nav_active_fg: rgb(0x1c1c1e),
-    island: rgb(0x11111b),
-    island_border: rgb(0x45475a),
-    island_text: rgb(0xcdd6f4),
-    island_muted: rgb(0xa6adc8),
-    island_dim: rgb(0x7f849c),
-    island_field: rgb(0x313244),
+    hero_card: rgb(0x2c2c2e),
+    hero_card_border: tint(255, 255, 255, 26),
+    nav_active_bg: rgb(0x0a84ff),
+    nav_active_fg: rgb(0xffffff),
+    island: rgb(0x0b0b0d),
+    island_border: tint(255, 255, 255, 36),
+    island_text: rgb(0xf5f5f7),
+    island_muted: rgb(0xaeaeb2),
+    island_dim: rgb(0x8e8e93),
+    island_field: rgb(0x2c2c2e),
+};
+
+const TAHOE_LIGHT: Palette = Palette {
+    dark: false,
+    bg: rgb(0xf5f5f7),
+    bg_top: rgb(0xfbfbfd),
+    bg_bottom: rgb(0xe7e7ec),
+    glow: rgb(0x007aff),
+    sidebar: rgb(0xffffff),
+    card: rgb(0xffffff),
+    card_hover: rgb(0xeeeef2),
+    input: rgb(0xf2f2f7),
+    canvas: rgb(0xe4e4ea),
+    border: tint(0, 0, 0, 30),
+    border_soft: tint(0, 0, 0, 16),
+    shadow: Color32::from_black_alpha(44),
+    text: rgb(0x1d1d1f),
+    muted: rgb(0x6e6e73),
+    dim: rgb(0x8e8e93),
+    accent: rgb(0x007aff),
+    accent_soft: tint(0, 122, 255, 32),
+    on_accent: rgb(0xffffff),
+    yellow: rgb(0xffcc00),
+    orange: rgb(0xff9500),
+    red: rgb(0xff3b30),
+    blue: rgb(0x007aff),
+    green: rgb(0x34c759),
+    hero_top: rgb(0xf7f7fa),
+    hero_bottom: rgb(0xe9e9ef),
+    hero_glow: rgb(0x007aff),
+    hero_text: rgb(0x1d1d1f),
+    hero_muted: rgb(0x6e6e73),
+    hero_card: rgb(0xffffff),
+    hero_card_border: tint(0, 0, 0, 20),
+    nav_active_bg: rgb(0x007aff),
+    nav_active_fg: rgb(0xffffff),
+    island: rgb(0xffffff),
+    island_border: tint(0, 0, 0, 24),
+    island_text: rgb(0x1d1d1f),
+    island_muted: rgb(0x6e6e73),
+    island_dim: rgb(0x8e8e93),
+    island_field: rgb(0xf2f2f7),
 };
 
 fn palette_for(f: Flavor) -> Palette {
     match f {
-        Flavor::Frappe => FRAPPE,
-        Flavor::Macchiato => MACCHIATO,
-        Flavor::Mocha => MOCHA,
-        Flavor::Tahoe => TAHOE,
+        Flavor::TahoeLight => TAHOE_LIGHT,
+        Flavor::TahoeDark => TAHOE_DARK,
     }
 }
 
@@ -529,7 +448,7 @@ fn soft_glow(painter: &egui::Painter, center: egui::Pos2, radius: f32, color: Co
     painter.add(egui::Shape::mesh(mesh));
 }
 
-/// Lukis banner hero gelap dengan glow ungu.
+/// Lukis banner hero dengan glow aksen yang menyesuaikan mode terang/gelap.
 pub fn paint_hero(painter: &egui::Painter, rect: egui::Rect) {
     let radius = CornerRadius::same(24);
     painter.rect_filled(rect, radius, hero_top());
@@ -542,20 +461,27 @@ pub fn paint_hero(painter: &egui::Painter, rect: egui::Rect) {
             rect.top() + rect.height() * 0.18,
         ),
         rect.height() * 0.9,
-        alpha(hero_glow(), if is_dark() { 90 } else { 110 }),
+        alpha(hero_glow(), if is_dark() { 90 } else { 42 }),
     );
     soft_glow(
         painter,
         egui::pos2(rect.left() + rect.width() * 0.12, rect.bottom() - 6.0),
         rect.height() * 0.55,
-        alpha(hero_bottom(), 160),
+        alpha(hero_bottom(), if is_dark() { 160 } else { 90 }),
     );
 
-    // Garis tepi halus di bagian atas, seperti pantulan cahaya.
+    // Garis tepi halus, seperti pantulan cahaya.
     painter.rect_stroke(
         rect,
         radius,
-        Stroke::new(1.0, Color32::from_white_alpha(24)),
+        Stroke::new(
+            1.0,
+            if is_dark() {
+                Color32::from_white_alpha(24)
+            } else {
+                Color32::from_black_alpha(14)
+            },
+        ),
         StrokeKind::Inside,
     );
 }
@@ -584,7 +510,7 @@ pub fn apply(ctx: &egui::Context) {
         style.visuals.faint_bg_color = if p.dark {
             Color32::from_rgba_unmultiplied(255, 255, 255, 10)
         } else {
-            Color32::from_rgba_unmultiplied(43, 33, 80, 6)
+            Color32::from_rgba_unmultiplied(0, 0, 0, 6)
         };
         style.visuals.code_bg_color = p.input;
 
@@ -615,15 +541,16 @@ pub fn apply(ctx: &egui::Context) {
 
         // Seleksi — aksen tema.
         style.visuals.selection.bg_fill = p.accent;
-        style.visuals.selection.stroke = Stroke::new(0.0, Color32::TRANSPARENT);
+        style.visuals.selection.stroke = Stroke::new(0.0, p.on_accent);
         style.visuals.hyperlink_color = p.accent;
-        style.visuals.override_text_color = Some(p.text);
+        // Catatan: `override_text_color` sengaja tidak dipakai agar teks
+        // nonaktif tetap terlihat redup dan status disabled tidak hilang.
 
         // Widget: noninteractive (label, separator)
         style.visuals.widgets.noninteractive.bg_fill = if p.dark {
             Color32::from_rgba_unmultiplied(255, 255, 255, 12)
         } else {
-            Color32::from_rgba_unmultiplied(43, 33, 80, 6)
+            Color32::from_rgba_unmultiplied(0, 0, 0, 6)
         };
         style.visuals.widgets.noninteractive.weak_bg_fill = Color32::TRANSPARENT;
         style.visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0, p.border_soft);
@@ -639,18 +566,14 @@ pub fn apply(ctx: &egui::Context) {
         style.visuals.widgets.inactive.weak_bg_fill = if p.dark {
             Color32::from_rgba_unmultiplied(255, 255, 255, 8)
         } else {
-            Color32::from_rgba_unmultiplied(43, 33, 80, 4)
+            Color32::from_rgba_unmultiplied(0, 0, 0, 4)
         };
         style.visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, p.border);
         style.visuals.widgets.inactive.fg_stroke = Stroke::new(1.0, p.text);
         style.visuals.widgets.inactive.corner_radius = CornerRadius::same(10);
 
         // Widget: hovered
-        style.visuals.widgets.hovered.bg_fill = if p.dark {
-            p.card_hover
-        } else {
-            Color32::from_rgb(0xf6, 0xf3, 0xff)
-        };
+        style.visuals.widgets.hovered.bg_fill = p.card_hover;
         style.visuals.widgets.hovered.weak_bg_fill = style.visuals.widgets.hovered.bg_fill;
         style.visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, p.border);
         style.visuals.widgets.hovered.fg_stroke = Stroke::new(1.0, p.text);
@@ -888,6 +811,7 @@ pub fn segmented_rtl(ui: &mut egui::Ui, selected: &mut usize, labels: &[&str]) {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Icon {
     Photo,
+    Scan,
     Convert,
     Tools,
     Settings,
@@ -935,6 +859,20 @@ pub fn icon(painter: &egui::Painter, rect: egui::Rect, kind: Icon, color: Color3
             painter.line_segment([p(0.92, 0.7), p(0.1, 0.7)], s);
             painter.line_segment([p(0.1, 0.7), p(0.28, 0.54)], s);
             painter.line_segment([p(0.1, 0.7), p(0.28, 0.86)], s);
+        }
+        Icon::Scan => {
+            // Sudut pemindai + garis pindai.
+            for (x, y, dx, dy) in [
+                (0.12, 0.12, 1.0, 1.0),
+                (0.88, 0.12, -1.0, 1.0),
+                (0.12, 0.88, 1.0, -1.0),
+                (0.88, 0.88, -1.0, -1.0),
+            ] {
+                painter.line_segment([p(x, y), p(x + dx * 0.22, y)], s);
+                painter.line_segment([p(x, y), p(x, y + dy * 0.22)], s);
+            }
+            painter.line_segment([p(0.14, 0.56), p(0.86, 0.56)], s);
+            painter.line_segment([p(0.28, 0.72), p(0.72, 0.72)], s);
         }
         Icon::Tools => {
             for (y, x) in [(0.25, 0.32), (0.5, 0.68), (0.75, 0.44)] {
@@ -1084,13 +1022,55 @@ mod tests {
     use super::*;
 
     #[test]
-    fn default_flavor_is_mocha() {
-        assert_eq!(Flavor::default(), Flavor::Mocha);
+    fn default_flavor_is_dark_tahoe() {
+        assert_eq!(Flavor::default(), Flavor::TahoeDark);
     }
 
     #[test]
-    fn legacy_latte_pref_loads_as_mocha() {
-        let flavor: Flavor = serde_json::from_str("\"latte\"").unwrap();
-        assert_eq!(flavor, Flavor::Mocha);
+    fn legacy_theme_prefs_load_as_dark_tahoe() {
+        for old in ["latte", "frappe", "macchiato", "mocha", "tahoe", "dark"] {
+            let raw = format!("\"{old}\"");
+            let flavor: Flavor = serde_json::from_str(&raw).unwrap();
+            assert_eq!(flavor, Flavor::TahoeDark, "pref lama {old}");
+        }
+    }
+
+    #[test]
+    fn light_theme_pref_roundtrips() {
+        let raw = serde_json::to_string(&Flavor::TahoeLight).unwrap();
+        assert_eq!(raw, "\"tahoe_light\"");
+        let flavor: Flavor = serde_json::from_str(&raw).unwrap();
+        assert_eq!(flavor, Flavor::TahoeLight);
+    }
+
+    #[test]
+    fn palette_indices_stay_in_sync() {
+        for (i, flavor) in Flavor::ALL.iter().copied().enumerate() {
+            assert_eq!(flavor.index(), i);
+            assert_eq!(Flavor::from_index(i), flavor);
+        }
+        assert_eq!(Flavor::from_index(usize::MAX), Flavor::TahoeDark);
+    }
+
+    #[test]
+    fn palettes_are_opaque_and_contrasting() {
+        for flavor in Flavor::ALL {
+            let p = palette_for(flavor);
+            for (name, color) in [
+                ("bg", p.bg),
+                ("sidebar", p.sidebar),
+                ("card", p.card),
+                ("input", p.input),
+                ("canvas", p.canvas),
+                ("text", p.text),
+                ("muted", p.muted),
+                ("hero_text", p.hero_text),
+                ("island", p.island),
+                ("island_text", p.island_text),
+            ] {
+                assert_eq!(color.a(), 255, "{name} harus opak pada {flavor:?}");
+            }
+            assert_eq!(p.dark, flavor == Flavor::TahoeDark);
+        }
     }
 }

@@ -15,7 +15,7 @@ pub struct Prefs {
     pub sheet: SheetSettings,
     pub studio: String,
     pub last_dir: Option<PathBuf>,
-    /// Palet tema yang dipakai (Catppuccin Frappé/Macchiato/Mocha).
+    /// Mode tampilan yang dipakai (Tahoe Terang / Tahoe Gelap).
     pub theme: Flavor,
 }
 
