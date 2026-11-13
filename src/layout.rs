@@ -34,6 +34,9 @@ pub struct SheetLayout {
     pub cols: usize,
     pub rows: usize,
     pub capacity: usize,
+    /// Kuantitas efektif tiap baris paket, termasuk tambahan otomatis.
+    /// Kosong untuk mode satuan.
+    pub packet_qty: Vec<usize>,
     /// Margin efektif (termasuk pergeseran auto-center).
     pub margins: Margins,
     pub used_w_mm: f32,
@@ -203,6 +206,7 @@ fn layout_single(settings: &SheetSettings, page_w: f32, page_h: f32) -> SheetLay
         cols,
         rows,
         capacity,
+        packet_qty: Vec::new(),
         margins: Margins {
             left_mm: start_x,
             top_mm: start_y,
@@ -215,11 +219,93 @@ fn layout_single(settings: &SheetSettings, page_w: f32, page_h: f32) -> SheetLay
     }
 }
 
+/// Kuantitas efektif tiap ukuran paket. Bila `packet_auto_fill` aktif, slot
+/// kosong pada baris terakhir diisi lebih dulu, lalu baris tambahan ditambahkan
+/// bergiliran selama masih muat tanpa melewati area cetak.
+fn packet_quantities(settings: &SheetSettings, avail_w: f32, avail_h: f32, gap: f32) -> Vec<usize> {
+    let mut qty: Vec<usize> = settings
+        .packet
+        .iter()
+        .map(|item| item.qty as usize)
+        .collect();
+    if !settings.packet_auto_fill || qty.is_empty() {
+        return qty;
+    }
+
+    // Jangan menambah apa pun bila paket dasar saja sudah melebihi halaman.
+    if packet_used_h(settings, &qty, avail_w, gap) > avail_h + 0.01 {
+        return qty;
+    }
+
+    // Isi slot kosong di baris terakhir tiap ukuran (tinggi tidak bertambah).
+    for (i, item) in settings.packet.iter().enumerate() {
+        if qty[i] == 0 {
+            continue;
+        }
+        let cols = grid_count(avail_w, item.size.mm().0, gap).max(1);
+        let rem = qty[i] % cols;
+        if rem != 0 {
+            qty[i] += cols - rem;
+        }
+    }
+
+    let used = packet_used_h(settings, &qty, avail_w, gap);
+    let mut remaining = avail_h - used;
+    if remaining <= 0.0 {
+        return qty;
+    }
+
+    // Tambah satu baris penuh secara bergiliran sampai tidak ada yang muat.
+    loop {
+        let mut added = false;
+        for (i, item) in settings.packet.iter().enumerate() {
+            if qty[i] == 0 {
+                continue;
+            }
+            let (pw, ph) = item.size.mm();
+            let cols = grid_count(avail_w, pw, gap).max(1);
+            let cost = ph + gap;
+            if remaining + 0.01 >= cost {
+                qty[i] += cols;
+                remaining -= cost;
+                added = true;
+            }
+        }
+        if !added {
+            break;
+        }
+    }
+
+    qty
+}
+
+/// Tinggi total (mm) yang dipakai sederet kuantitas paket pada satu halaman.
+fn packet_used_h(settings: &SheetSettings, qty: &[usize], avail_w: f32, gap: f32) -> f32 {
+    let mut used = 0.0;
+    let mut any = false;
+    for (i, item) in settings.packet.iter().enumerate() {
+        let count = qty.get(i).copied().unwrap_or(0);
+        if count == 0 {
+            continue;
+        }
+        let (pw, ph) = item.size.mm();
+        let cols = grid_count(avail_w, pw, gap).max(1);
+        let rows = count.div_ceil(cols);
+        used += rows as f32 * (ph + gap);
+        any = true;
+    }
+    if any {
+        used = (used - gap).max(0.0);
+    }
+    used
+}
+
 fn layout_packet(settings: &SheetSettings, page_w: f32, page_h: f32) -> SheetLayout {
     let margins = effective_margins(settings);
     let gap = settings.gap_mm.clamp(0.0, 30.0);
     let avail_w = (page_w - margins.horizontal()).max(0.0);
     let avail_h = (page_h - margins.vertical()).max(0.0);
+    let packet_qty = packet_quantities(settings, avail_w, avail_h, gap);
 
     let start_x_base = margins.left_mm;
     let mut y = margins.top_mm;
@@ -230,12 +316,13 @@ fn layout_packet(settings: &SheetSettings, page_w: f32, page_h: f32) -> SheetLay
     let mut stopped = false;
 
     for (item_idx, item) in settings.packet.iter().enumerate() {
-        if item.qty == 0 {
+        let count = packet_qty.get(item_idx).copied().unwrap_or(0);
+        if count == 0 {
             continue;
         }
         let (pw, ph) = item.size.mm();
         let cols = grid_count(avail_w, pw, gap).max(1);
-        let mut remaining = item.qty as usize;
+        let mut remaining = count;
         let mut item_rows = 0usize;
 
         while remaining > 0 {
@@ -320,7 +407,8 @@ fn layout_packet(settings: &SheetSettings, page_w: f32, page_h: f32) -> SheetLay
         overflow,
         cols: max_cols,
         rows: total_rows,
-        capacity: settings.packet.iter().map(|i| i.qty as usize).sum(),
+        capacity: packet_qty.iter().sum(),
+        packet_qty,
         margins: effective,
         used_w_mm: (right - left.max(0.0)).max(0.0),
         used_h_mm: used_h.max(0.0),
@@ -443,6 +531,33 @@ mod tests {
 
         s.packet[0].qty = 200;
         let l = compute(&s);
+        assert!(l.overflow > 0);
+    }
+
+    #[test]
+    fn packet_auto_fill_uses_leftover_without_overflow() {
+        let mut s = SheetSettings::default();
+        s.mode = SheetMode::Packet;
+        let base = compute(&s);
+
+        s.packet_auto_fill = true;
+        let filled = compute(&s);
+        assert!(filled.cells.len() > base.cells.len());
+        assert_eq!(filled.overflow, 0);
+        assert_eq!(filled.cells.len(), filled.capacity);
+        assert_eq!(filled.packet_qty.len(), s.packet.len());
+        assert_eq!(filled.packet_qty.iter().sum::<usize>(), filled.cells.len());
+        assert!(filled.used_h_mm <= 297.0 - 25.4 + 0.01);
+    }
+
+    #[test]
+    fn packet_auto_fill_keeps_overflowing_package_untouched() {
+        let mut s = SheetSettings::default();
+        s.mode = SheetMode::Packet;
+        s.packet[0].qty = 200;
+        s.packet_auto_fill = true;
+        let l = compute(&s);
+        assert_eq!(l.packet_qty[0], 200);
         assert!(l.overflow > 0);
     }
 

@@ -110,10 +110,12 @@ impl CetakinApp {
                     ui.add_space(2.0);
                 }
 
-                // Dorong kartu ringkasan ke bagian bawah sidebar.
-                ui.add_space((ui.available_height() - 138.0).max(10.0));
+                // Bagi ruang kosong secara merata: setengah di atas kartu ringkasan
+                // dan setengah di bawahnya, supaya atas-bawah sidebar seimbang.
+                let free = (ui.available_height() - 150.0).max(20.0);
+                ui.add_space(free * 0.5);
                 self.sidebar_summary(ui);
-                ui.add_space(10.0);
+                ui.add_space(free * 0.5);
                 self.sidebar_status(ui);
             });
     }
@@ -370,7 +372,6 @@ impl CetakinApp {
                         if theme::primary_button(ui, "Simpan Preferensi").clicked() {
                             action = Some(HeaderAction::SavePrefs);
                         }
-                        theme::badge(ui, theme::flavor().short_label(), theme::accent());
                     }
                 }
             });

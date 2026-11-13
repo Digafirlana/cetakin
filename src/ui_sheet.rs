@@ -18,6 +18,11 @@ use crate::theme;
 use crate::ui_common::{card_title, cover_uv, drag_cm, label_value};
 use crate::util::{safe_slug, temp_pdf};
 
+enum PacketRowAction {
+    Remove(usize),
+    Duplicate(usize),
+}
+
 impl CetakinApp {
     // -------------------------------------------------------------- layout
 
@@ -485,7 +490,20 @@ impl CetakinApp {
                 .size(11.0)
                 .color(theme::dim()),
         );
-        ui.add_space(6.0);
+        ui.add_space(7.0);
+
+        ui.checkbox(
+            &mut self.settings.packet_auto_fill,
+            RichText::new("Isi halaman otomatis").size(12.0),
+        );
+        ui.label(
+            RichText::new(
+                "Jumlah di bawah menjadi minimum; sisa kertas diisi otomatis tanpa melebihi halaman.",
+            )
+            .size(10.5)
+            .color(theme::dim()),
+        );
+        ui.add_space(8.0);
 
         let photo_names: Vec<String> = self
             .photos
@@ -493,9 +511,11 @@ impl CetakinApp {
             .enumerate()
             .map(|(i, p)| format!("{}  ·  {}", i + 1, p.name()))
             .collect();
-        let mut remove: Option<usize> = None;
+        let mut action: Option<PacketRowAction> = None;
+        let auto = self.settings.packet_auto_fill;
         let count = self.settings.packet.len();
         for i in 0..count {
+            let effective = layout.packet_qty.get(i).copied().unwrap_or(0);
             egui::Frame::new()
                 .fill(theme::input())
                 .corner_radius(CornerRadius::same(10))
@@ -522,10 +542,29 @@ impl CetakinApp {
                                 .range(1..=200)
                                 .suffix("×"),
                         );
+                        if auto {
+                            let base = item.qty as usize;
+                            let color = if effective > base {
+                                theme::accent()
+                            } else {
+                                theme::muted()
+                            };
+                            ui.label(
+                                RichText::new(format!("→ {effective}×"))
+                                    .size(10.5)
+                                    .strong()
+                                    .color(color),
+                            )
+                            .on_hover_text(if effective > base {
+                                format!("{base}× dasar + {}× tambahan otomatis", effective - base)
+                            } else {
+                                "Jumlah mengikuti isi halaman otomatis".to_string()
+                            });
+                        }
                         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                             if theme::icon_button(ui, theme::Icon::Trash, "Hapus ukuran").clicked()
                             {
-                                remove = Some(i);
+                                action = Some(PacketRowAction::Remove(i));
                             }
                         });
                     });
@@ -533,7 +572,7 @@ impl CetakinApp {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new("Foto").size(10.5).color(theme::muted()));
                         egui::ComboBox::from_id_salt(("packet-photo", i))
-                            .width(ui.available_width() - 8.0)
+                            .width((ui.available_width() - 38.0).max(80.0))
                             .selected_text(
                                 self.settings.packet[i]
                                     .photo
@@ -548,15 +587,57 @@ impl CetakinApp {
                                     ui.selectable_value(&mut item.photo, Some(pi), name);
                                 }
                             });
+                        if theme::icon_button(ui, theme::Icon::Add, "Duplikat ukuran").clicked() {
+                            action = Some(PacketRowAction::Duplicate(i));
+                        }
                     });
                 });
             ui.add_space(6.0);
         }
 
-        if let Some(index) = remove {
-            self.settings.packet.remove(index);
+        match action {
+            Some(PacketRowAction::Remove(index)) => {
+                self.settings.packet.remove(index);
+            }
+            Some(PacketRowAction::Duplicate(index)) => {
+                if let Some(item) = self.settings.packet.get(index).cloned() {
+                    self.settings.packet.insert(index + 1, item);
+                }
+            }
+            None => {}
         }
 
+        ui.label(
+            RichText::new("Tambah cepat")
+                .size(10.5)
+                .color(theme::muted()),
+        );
+        ui.add_space(3.0);
+        let mut quick_add: Option<PhotoPreset> = None;
+        ui.horizontal_wrapped(|ui| {
+            for preset in [
+                PhotoPreset::Cm2x3,
+                PhotoPreset::Cm3x4,
+                PhotoPreset::Cm4x6,
+                PhotoPreset::R2,
+                PhotoPreset::R3,
+                PhotoPreset::R4,
+                PhotoPreset::Passport,
+            ] {
+                if preset_chip(ui, preset.short_label(), false) {
+                    quick_add = Some(preset);
+                }
+            }
+        });
+        if let Some(preset) = quick_add {
+            self.settings.packet.push(crate::model::PacketItem {
+                size: PhotoSize::from_preset(preset),
+                qty: 2,
+                photo: None,
+            });
+        }
+
+        ui.add_space(5.0);
         ui.horizontal(|ui| {
             if theme::secondary_button(ui, "+ Tambah ukuran").clicked() {
                 self.settings.packet.push(crate::model::PacketItem {

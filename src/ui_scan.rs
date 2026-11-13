@@ -156,8 +156,7 @@ impl CetakinApp {
                     let (corners, note) = match scan::detect_quad(&preview) {
                         Some(quad) => (
                             quad,
-                            "Tepi dokumen terdeteksi otomatis. Geser titik bila perlu."
-                                .to_string(),
+                            "Tepi dokumen terdeteksi otomatis. Geser titik bila perlu.".to_string(),
                         ),
                         None => (
                             scan::full_frame(),
@@ -167,8 +166,7 @@ impl CetakinApp {
                     };
                     let id = self.scan.next_id;
                     self.scan.next_id += 1;
-                    let texture =
-                        texture_from_rgba(ctx, &format!("scan-source-{id}"), &preview);
+                    let texture = texture_from_rgba(ctx, &format!("scan-source-{id}"), &preview);
                     self.scan.items.push(ScanItem {
                         id,
                         path,
@@ -230,15 +228,13 @@ impl CetakinApp {
         let rotated = image_utils::rotate_rgba(item.source.clone(), 90);
         item.rotation = (item.rotation + 90) % 360;
         item.full_dims = (item.full_dims.1, item.full_dims.0);
-        item.source_tex =
-            texture_from_rgba(ctx, &format!("scan-source-{}", item.id), &rotated);
+        item.source_tex = texture_from_rgba(ctx, &format!("scan-source-{}", item.id), &rotated);
         item.source = rotated;
 
         match scan::detect_quad(&item.source) {
             Some(quad) => {
                 item.corners = quad;
-                item.note =
-                    "Tepi dokumen terdeteksi otomatis. Geser titik bila perlu.".to_string();
+                item.note = "Tepi dokumen terdeteksi otomatis. Geser titik bila perlu.".to_string();
             }
             None => {
                 item.corners = scan::full_frame();
@@ -264,9 +260,8 @@ impl CetakinApp {
                 }
                 None => {
                     item.corners = scan::full_frame();
-                    item.note =
-                        "Tepi tidak terdeteksi otomatis. Atur keempat titik sudut manual."
-                            .to_string();
+                    item.note = "Tepi tidak terdeteksi otomatis. Atur keempat titik sudut manual."
+                        .to_string();
                     Some(false)
                 }
             }
@@ -423,7 +418,12 @@ impl CetakinApp {
             let (title, note) = if total == 1 {
                 (
                     "Hasil pindai disimpan".to_string(),
-                    format!("{} × {} px · {}", first_dims.0, first_dims.1, preset.label()),
+                    format!(
+                        "{} × {} px · {}",
+                        first_dims.0,
+                        first_dims.1,
+                        preset.label()
+                    ),
                 )
             } else {
                 (
@@ -500,11 +500,7 @@ impl CetakinApp {
                         &format!("Menyiapkan halaman {}…", index + 1),
                     );
                     let temp = temp_scan_png(index);
-                    image_utils::save_image(
-                        &DynamicImage::ImageRgba8(result),
-                        &temp,
-                        95,
-                    )?;
+                    image_utils::save_image(&DynamicImage::ImageRgba8(result), &temp, 95)?;
                     temps.push(temp);
                 }
 
@@ -670,7 +666,11 @@ impl CetakinApp {
                 });
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     let is_empty = self.scan.items.is_empty();
-                    let multi_label = if is_empty { "Beberapa Foto" } else { "Tambah Beberapa" };
+                    let multi_label = if is_empty {
+                        "Beberapa Foto"
+                    } else {
+                        "Tambah Beberapa"
+                    };
                     let single_label = if is_empty { "1 Foto" } else { "Tambah 1 Foto" };
                     if theme::primary_button(ui, multi_label).clicked() {
                         *action = Some(ScanAction::Pick);
@@ -783,22 +783,15 @@ impl CetakinApp {
                                 .unwrap_or("dokumen");
                             ui.vertical(|ui| {
                                 let size = Vec2::new(112.0, 82.0);
-                                let (rect, response) =
-                                    ui.allocate_exact_size(size, Sense::click());
+                                let (rect, response) = ui.allocate_exact_size(size, Sense::click());
                                 let painter = ui.painter_at(rect);
-                                painter.rect_filled(
-                                    rect,
-                                    CornerRadius::same(10),
-                                    theme::canvas(),
-                                );
+                                painter.rect_filled(rect, CornerRadius::same(10), theme::canvas());
 
                                 let tex_size = item.source_tex.size_vec2();
                                 let scale = ((rect.width() - 8.0) / tex_size.x.max(1.0))
                                     .min((rect.height() - 8.0) / tex_size.y.max(1.0));
-                                let image_rect = egui::Rect::from_center_size(
-                                    rect.center(),
-                                    tex_size * scale,
-                                );
+                                let image_rect =
+                                    egui::Rect::from_center_size(rect.center(), tex_size * scale);
                                 painter.image(
                                     item.source_tex.id(),
                                     image_rect,
@@ -842,15 +835,13 @@ impl CetakinApp {
                                 if response.hovered() {
                                     ui.ctx().set_cursor_icon(CursorIcon::PointingHand);
                                 }
-                                ui.label(
-                                    RichText::new(truncate(name, 16))
-                                        .size(9.0)
-                                        .color(if is_active {
-                                            theme::accent()
-                                        } else {
-                                            theme::dim()
-                                        }),
-                                );
+                                ui.label(RichText::new(truncate(name, 16)).size(9.0).color(
+                                    if is_active {
+                                        theme::accent()
+                                    } else {
+                                        theme::dim()
+                                    },
+                                ));
                             });
                         }
                     });
@@ -869,7 +860,12 @@ impl CetakinApp {
     }
 
     fn scan_source_card(&mut self, ui: &mut egui::Ui, action: &mut Option<ScanAction>) {
-        let Some(index) = self.scan.items.get(self.scan.active).map(|_| self.scan.active) else {
+        let Some(index) = self
+            .scan
+            .items
+            .get(self.scan.active)
+            .map(|_| self.scan.active)
+        else {
             return;
         };
         let total = self.scan.items.len();
@@ -884,14 +880,9 @@ impl CetakinApp {
                         .and_then(|n| n.to_str())
                         .unwrap_or("dokumen");
                     ui.label(
-                        RichText::new(format!(
-                            "{} · {}/{}",
-                            truncate(name, 26),
-                            index + 1,
-                            total
-                        ))
-                        .size(10.5)
-                        .color(theme::dim()),
+                        RichText::new(format!("{} · {}/{}", truncate(name, 26), index + 1, total))
+                            .size(10.5)
+                            .color(theme::dim()),
                     );
                 });
             });
@@ -1013,11 +1004,7 @@ impl CetakinApp {
             });
             ui.add_space(6.0);
             let item = &self.scan.items[index];
-            ui.label(
-                RichText::new(&item.note)
-                    .size(10.0)
-                    .color(theme::dim()),
-            );
+            ui.label(RichText::new(&item.note).size(10.0).color(theme::dim()));
             ui.label(
                 RichText::new(format!(
                     "Sumber {} × {} px · sudut bisa digeser langsung pada gambar",
@@ -1130,11 +1117,9 @@ impl CetakinApp {
             if total > 1 {
                 ui.add_space(4.0);
                 ui.label(
-                    RichText::new(
-                        "Simpan semua gambar akan meminta satu folder tujuan (PNG).",
-                    )
-                    .size(9.5)
-                    .color(theme::dim()),
+                    RichText::new("Simpan semua gambar akan meminta satu folder tujuan (PNG).")
+                        .size(9.5)
+                        .color(theme::dim()),
                 );
             }
 

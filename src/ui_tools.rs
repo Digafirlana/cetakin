@@ -716,12 +716,7 @@ impl CetakinApp {
     fn theme_card(&mut self, ui: &mut egui::Ui) {
         let mut chosen = None;
         theme::card().show(ui, |ui| {
-            ui.horizontal(|ui| {
-                card_title(ui, theme::Icon::Settings, "Mode Tampilan");
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    theme::badge(ui, theme::flavor().short_label(), theme::accent());
-                });
-            });
+            card_title(ui, theme::Icon::Settings, "Mode Tampilan");
             ui.add_space(5.0);
             ui.label(
                 RichText::new(

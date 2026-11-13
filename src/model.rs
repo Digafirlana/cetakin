@@ -385,6 +385,9 @@ pub struct SheetSettings {
     pub batch_per_photo: bool,
     pub fit: ImageFit,
     pub packet: Vec<PacketItem>,
+    /// Isi sisa area kertas dengan menambah kuantitas paket secara otomatis.
+    #[serde(default)]
+    pub packet_auto_fill: bool,
 
     pub margin_preset: MarginPreset,
     pub custom_margins: Margins,
@@ -426,6 +429,7 @@ impl Default for SheetSettings {
                     photo: None,
                 },
             ],
+            packet_auto_fill: false,
             margin_preset: MarginPreset::Normal,
             custom_margins: Margins::all(25.4),
             auto_center: true,

@@ -11,6 +11,8 @@ Dibuat dengan **Rust + eframe/egui** (renderer glow/OpenGL). Berjalan di **Windo
 ### 1. Cetak Foto
 - Ukuran foto: **2×3, 3×4, 4×6**, 2R–6R, paspor, dan ukuran kustom.
 - Mode **satuan** dan **paket campuran** (beberapa ukuran dalam satu lembar).
+- Paket campuran bisa **diisi otomatis** mengikuti sisa kertas, ditambah cepat lewat
+  tombol preset ukuran, dan tiap baris bisa diduplikat.
 - Kertas A3/A4/A5, Letter, Legal, F4/Folio, kertas 4R/5R/6R, dan kustom.
 - Orientasi potret, mendatar, atau otomatis.
 - Margin gaya Word: **Normal, Sempit, Sedang, Lebar, Tanpa, Kustom** + pusatkan grid otomatis.
