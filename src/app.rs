@@ -13,7 +13,7 @@ use crate::theme;
 use crate::ui_convert::ConvertState;
 use crate::util::prefs_path;
 
-pub use crate::jobs::{JobResult, JobTag, ToastKind};
+pub use crate::jobs::{HistoryEntry, JobResult, JobTag, ToastKind};
 pub use crate::photos::PhotoItem;
 
 // ---------------------------------------------------------------------------
@@ -23,6 +23,7 @@ pub use crate::photos::PhotoItem;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tab {
     Home,
+    History,
     Sheet,
     Scan,
     Convert,
@@ -34,6 +35,7 @@ impl Tab {
     pub fn title(self) -> &'static str {
         match self {
             Tab::Home => "Beranda",
+            Tab::History => "Riwayat",
             Tab::Sheet => "Cetak Foto",
             Tab::Scan => "Pemindai Dokumen",
             Tab::Convert => "Konversi Dokumen",
@@ -45,6 +47,7 @@ impl Tab {
     pub fn subtitle(self) -> &'static str {
         match self {
             Tab::Home => "Selamat datang di Cetakin  pilih fitur atau impor file untuk memulai.",
+            Tab::History => "Semua hasil cetak, simpan, konversi, dan pindai dalam sesi ini.",
             Tab::Sheet => "Susun pas foto di kertas, atur margin, lalu cetak.",
             Tab::Scan => "Foto miring jadi scan rapi  koreksi perspektif & putihkan kertas.",
             Tab::Convert => "PDF, Word, dan gambar",
@@ -80,6 +83,7 @@ pub struct CetakinApp {
     pub printers: Vec<String>,
     pub inspector: Option<PathBuf>,
     pub last_output: Vec<PathBuf>,
+    pub history: Vec<HistoryEntry>,
     pub confirm_clear: bool,
     pub confirm_reset: bool,
     pub prefs_dirty: bool,
@@ -128,6 +132,7 @@ impl CetakinApp {
             printers: Vec::new(),
             inspector: None,
             last_output: Vec::new(),
+            history: Vec::new(),
             confirm_clear: false,
             confirm_reset: false,
             prefs_dirty: false,
@@ -194,6 +199,16 @@ impl CetakinApp {
         match self.tab {
             Tab::Home => {
                 // Di beranda, drop gambar langsung ke Cetak Foto
+                if !images.is_empty() {
+                    self.add_photos(images);
+                    self.tab = Tab::Sheet;
+                } else if !docs.is_empty() {
+                    self.convert.add_files(docs);
+                    self.tab = Tab::Convert;
+                    self.toast_info("File ditambahkan", "Pilih operasi lalu jalankan konversi.");
+                }
+            }
+            Tab::History => {
                 if !images.is_empty() {
                     self.add_photos(images);
                     self.tab = Tab::Sheet;
@@ -302,6 +317,7 @@ impl eframe::App for CetakinApp {
                 }
                 match self.tab {
                     Tab::Home => self.home_tab(ui),
+                    Tab::History => self.history_tab(ui),
                     Tab::Sheet => self.sheet_tab(ui),
                     Tab::Scan => self.scan_tab(ui),
                     Tab::Convert => self.convert_tab(ui),

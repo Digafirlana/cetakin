@@ -211,11 +211,22 @@ impl CetakinApp {
                         .size(12.0)
                         .color(theme::muted()),
                 );
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    ui.add(
+                        egui::DragValue::new(&mut self.settings.gap_mm)
+                            .speed(0.1)
+                            .range(0.0..=15.0)
+                            .fixed_decimals(1)
+                            .suffix(" mm"),
+                    )
+                    .on_hover_text("Klik lalu ketik angka untuk mengisi jarak secara presisi.");
+                });
             });
-            ui.add(
-                egui::Slider::new(&mut self.settings.gap_mm, 0.0..=15.0)
-                    .suffix(" mm")
-                    .fixed_decimals(1),
+            ui.add(egui::Slider::new(&mut self.settings.gap_mm, 0.0..=15.0).show_value(false));
+            ui.label(
+                RichText::new("Ruang kosong antar sel foto. 0 mm berarti foto saling menempel.")
+                    .size(10.5)
+                    .color(theme::dim()),
             );
 
             ui.add_space(6.0);

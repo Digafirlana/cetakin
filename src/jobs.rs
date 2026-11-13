@@ -41,6 +41,15 @@ pub struct JobResult {
     pub files: Vec<PathBuf>,
 }
 
+/// Satu aktivitas selesai yang ditampilkan di tab Riwayat.
+#[derive(Clone)]
+pub struct HistoryEntry {
+    pub title: String,
+    pub note: String,
+    pub files: Vec<PathBuf>,
+    pub created: Instant,
+}
+
 pub struct Job {
     pub(crate) label: String,
     pub(crate) tag: JobTag,
@@ -138,6 +147,15 @@ impl CetakinApp {
                     }
                     if !res.files.is_empty() {
                         self.last_output = res.files.clone();
+                        self.history.push(HistoryEntry {
+                            title: res.title.clone(),
+                            note: res.note.clone(),
+                            files: res.files.clone(),
+                            created: Instant::now(),
+                        });
+                        if self.history.len() > 50 {
+                            self.history.remove(0);
+                        }
                     }
                     if tag == Some(JobTag::Print) {
                         self.toast_success("Siap dicetak", &res.note);

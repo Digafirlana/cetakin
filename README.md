@@ -52,6 +52,7 @@ Dibuat dengan **Rust + eframe/egui** (renderer glow/OpenGL). Berjalan di **Windo
   pilih langsung di tab **Pengaturan → Mode Tampilan**. Pilihan tersimpan bersama
   preferensi dan langsung diterapkan tanpa perlu restart.
 - **Dynamic Island** di tengah atas: progress job serta toast sukses/error/info.
+- **Riwayat sesi**: hasil cetak, simpan PDF, konversi, dan pindai bisa dibuka kembali.
 - **Notifikasi adaptif**: kapsul membulat penuh, warna lembut, aksen hijau/merah/biru sesuai status.
 - Ringkas saat berjalan, membesar saat hover/klik; error tetap terbuka sampai ditutup.
 - Animasi buka/tutup halus tanpa dependency tambahan.
@@ -174,6 +175,7 @@ src/
   scan.rs         Deteksi tepi, koreksi perspektif, pemutihan dokumen
   theme.rs        Palet Tahoe terang/gelap, kartu, tombol, ikon garis
   ui_sheet.rs     Tab Cetak Foto
+  ui_history.rs   Tab Riwayat
   ui_scan.rs      Tab Pemindai Dokumen
   ui_convert.rs   Tab Konversi
   ui_tools.rs     Tab Alat & Pengaturan

@@ -621,17 +621,6 @@ pub fn badge(ui: &mut egui::Ui, text: &str, color: Color32) {
         });
 }
 
-/// Label section kecil uppercase.
-pub fn section_label(ui: &mut egui::Ui, text: &str) {
-    ui.label(
-        RichText::new(text.to_uppercase())
-            .size(10.0)
-            .extra_letter_spacing(0.7)
-            .color(dim())
-            .strong(),
-    );
-}
-
 /// Titik status berwarna.
 pub fn dot(ui: &mut egui::Ui, color: Color32) {
     let (rect, _) = ui.allocate_exact_size(Vec2::splat(8.0), egui::Sense::hover());
@@ -747,6 +736,7 @@ pub enum Icon {
     Page,
     Close,
     Stack,
+    History,
     ChevronDown,
     ChevronRight,
 }
@@ -908,6 +898,14 @@ pub fn icon(painter: &egui::Painter, rect: egui::Rect, kind: Icon, color: Color3
                 );
             }
         }
+        Icon::History => {
+            // Jam dengan panah melingkar — simbol riwayat.
+            painter.circle_stroke(c, w * 0.34, s);
+            painter.line_segment([c, p(0.5, 0.28)], s);
+            painter.line_segment([c, p(0.66, 0.56)], s);
+            painter.line_segment([p(0.06, 0.34), p(0.06, 0.12)], s);
+            painter.line_segment([p(0.06, 0.34), p(0.28, 0.34)], s);
+        }
         Icon::ChevronDown => {
             painter.line_segment([p(0.2, 0.36), p(0.5, 0.68)], s);
             painter.line_segment([p(0.5, 0.68), p(0.8, 0.36)], s);
@@ -984,7 +982,6 @@ mod tests {
                 ("canvas", p.canvas),
                 ("text", p.text),
                 ("muted", p.muted),
-                ("hero_text", p.hero_text),
                 ("island", p.island),
                 ("island_text", p.island_text),
             ] {

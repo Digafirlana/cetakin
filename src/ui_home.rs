@@ -21,7 +21,7 @@ enum HomeAction {
     OpenScan,
     OpenConvert,
     OpenTools,
-    OpenSettings,
+    OpenHistory,
     ImportPhotos,
     ScanSingle,
     ScanMulti,
@@ -59,7 +59,7 @@ impl CetakinApp {
             Some(HomeAction::OpenScan) => self.tab = Tab::Scan,
             Some(HomeAction::OpenConvert) => self.tab = Tab::Convert,
             Some(HomeAction::OpenTools) => self.tab = Tab::Tools,
-            Some(HomeAction::OpenSettings) => self.tab = Tab::Settings,
+            Some(HomeAction::OpenHistory) => self.tab = Tab::History,
             Some(HomeAction::ImportPhotos) => {
                 self.import_photos_dialog();
                 self.tab = Tab::Sheet;
@@ -208,32 +208,55 @@ impl CetakinApp {
                 ("Cetak Sekarang", theme::Icon::Print, theme::red(), HomeAction::OpenSheet),
                 ("Simpan PDF", theme::Icon::Download, theme::blue(), HomeAction::OpenSheet),
                 ("Alat & Cek", theme::Icon::Tools, theme::muted(), HomeAction::OpenTools),
-                ("Pengaturan", theme::Icon::Settings, theme::dim(), HomeAction::OpenSettings),
             ];
 
-            let tile_size = Vec2::new(88.0, 86.0);
-            let cols = ((ui.available_width() + 10.0) / (tile_size.x + 10.0)).floor() as usize;
-            let cols = cols.max(4);
+            let gap = 12.0;
+            let min_tile_w = 86.0;
+            let max_tile_w = 200.0;
+            let avail = ui.available_width();
+            let count = tools.len();
+            let per_row = (((avail + gap) / (min_tile_w + gap)).floor() as usize).max(1);
 
-            let mut col = 0;
-            ui.horizontal_wrapped(|ui| {
-                ui.spacing_mut().item_spacing = Vec2::splat(10.0);
-                for (label, icon, color, nav) in tools {
-                    if col >= cols {
-                        col = 0;
+            if per_row >= count {
+                // Isi lebar kartu: tile ikut melebar saat jendela diperbesar.
+                let tile_w = ((avail - gap * (count.saturating_sub(1)) as f32) / count as f32)
+                    .clamp(min_tile_w, max_tile_w);
+                let tile_h = 82.0 * (tile_w / min_tile_w).sqrt().clamp(1.0, 1.35);
+                let row_w = count as f32 * tile_w + count.saturating_sub(1) as f32 * gap;
+                let pad = ((avail - row_w) / 2.0).max(0.0);
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = gap;
+                    ui.add_space(pad);
+                    for (label, icon, color, nav) in tools {
+                        if tool_tile(ui, Vec2::new(tile_w, tile_h), *icon, *color, label) {
+                            *action = Some(*nav);
+                        }
                     }
-                    if tool_tile(ui, tile_size, *icon, *color, label) {
-                        *action = Some(*nav);
-                    }
-                    col += 1;
+                });
+            } else {
+                let tile_size = Vec2::new(min_tile_w, 82.0);
+                for chunk in tools.chunks(per_row) {
+                    let row_w = chunk.len() as f32 * tile_size.x
+                        + chunk.len().saturating_sub(1) as f32 * gap;
+                    let pad = ((avail - row_w) / 2.0).max(0.0);
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = gap;
+                        ui.add_space(pad);
+                        for (label, icon, color, nav) in chunk {
+                            if tool_tile(ui, tile_size, *icon, *color, label) {
+                                *action = Some(*nav);
+                            }
+                        }
+                    });
+                    ui.add_space(gap);
                 }
-            });
+            }
         });
     }
 
     // ------------------------------------------------------------------ recent
 
-    fn home_recent(&mut self, ui: &mut egui::Ui, _action: &mut Option<HomeAction>) {
+    fn home_recent(&mut self, ui: &mut egui::Ui, action: &mut Option<HomeAction>) {
         theme::card().show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.label(
@@ -246,7 +269,7 @@ impl CetakinApp {
                     egui::Layout::right_to_left(egui::Align::Center),
                     |ui| {
                         if theme::secondary_button(ui, "Lihat Semua →").clicked() {
-                            // navigasi ke tab terkait bila perlu
+                            *action = Some(HomeAction::OpenHistory);
                         }
                     },
                 );
@@ -424,24 +447,32 @@ fn tool_tile(
         StrokeKind::Inside,
     );
 
-    // Lingkaran ikon
+    // Kotak ikon
+    let ratio = (size.y / 82.0).clamp(1.0, 1.35);
+    let icon_side = (36.0 * ratio).min(46.0);
     let icon_rect = egui::Rect::from_center_size(
-        egui::pos2(rect.center().x, rect.top() + 30.0),
-        Vec2::splat(32.0),
+        egui::pos2(rect.center().x, rect.top() + 28.0 * ratio),
+        Vec2::splat(icon_side),
     );
     painter.rect_filled(
         icon_rect,
-        CornerRadius::same(10),
+        CornerRadius::same(11),
         Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 24),
     );
-    theme::icon(&painter, icon_rect.shrink(7.0), icon, color, 1.6);
+    theme::icon(
+        &painter,
+        icon_rect.shrink(icon_side * (8.0 / 36.0)),
+        icon,
+        color,
+        1.6,
+    );
 
     // Label
     painter.text(
-        egui::pos2(rect.center().x, rect.bottom() - 16.0),
+        egui::pos2(rect.center().x, rect.bottom() - 15.0 * ratio),
         Align2::CENTER_CENTER,
         label,
-        FontId::proportional(10.0),
+        FontId::proportional(10.5 * ratio.min(1.15)),
         theme::text(),
     );
 

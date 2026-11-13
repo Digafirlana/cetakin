@@ -98,35 +98,16 @@ impl CetakinApp {
                 self.sidebar_brand(ui);
                 ui.add_space(20.0);
 
-                theme::section_label(ui, "Ruang kerja");
-                ui.add_space(7.0);
                 let main_items = [
                     (Tab::Home, theme::Icon::Stack, "Beranda"),
-                    (Tab::Sheet, theme::Icon::Photo, "Cetak Foto"),
-                    (Tab::Scan, theme::Icon::Scan, "Pemindai"),
-                    (Tab::Convert, theme::Icon::Convert, "Konversi"),
-                    (Tab::Tools, theme::Icon::Tools, "Alat"),
+                    (Tab::History, theme::Icon::History, "Riwayat"),
+                    (Tab::Settings, theme::Icon::Settings, "Pengaturan"),
                 ];
                 for (tab, icon, label) in main_items {
                     if self.nav_item(ui, icon, label, self.tab == tab) {
                         self.tab = tab;
                     }
                     ui.add_space(2.0);
-                }
-
-                ui.add_space(12.0);
-                theme::separator(ui);
-                ui.add_space(12.0);
-
-                theme::section_label(ui, "Lainnya");
-                ui.add_space(7.0);
-                if self.nav_item(
-                    ui,
-                    theme::Icon::Settings,
-                    "Pengaturan",
-                    self.tab == Tab::Settings,
-                ) {
-                    self.tab = Tab::Settings;
                 }
 
                 // Dorong kartu ringkasan ke bagian bawah sidebar.
@@ -349,7 +330,7 @@ impl CetakinApp {
                 );
                 ui.add_space(6.0);
                 match self.tab {
-                    Tab::Home => {}
+                    Tab::Home | Tab::History => {}
                     Tab::Sheet => {
                         if theme::primary_button(ui, "Impor Foto").clicked() {
                             action = Some(HeaderAction::Import);

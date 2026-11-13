@@ -19,6 +19,7 @@ mod ui_chrome;
 mod ui_common;
 mod ui_convert;
 mod ui_home;
+mod ui_history;
 mod ui_scan;
 mod ui_sheet;
 mod ui_tools;
