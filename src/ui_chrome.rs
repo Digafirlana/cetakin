@@ -413,134 +413,46 @@ impl CetakinApp {
 
     // -------------------------------------------------------------- hero
 
-    /// Banner dashboard di atas tab Cetak Foto.
+    /// Bar ringkas di atas tab Cetak Foto: statistik pekerjaan + tombol impor.
     pub(crate) fn hero(&mut self, ui: &mut egui::Ui) {
         let sheet = layout::compute(&self.settings);
-        let width = ui.available_width();
-        let height = 194.0;
-        let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
-        theme::paint_hero(ui.painter(), rect);
-
-        // Kartu statistik di bagian bawah hero.
-        let strip = egui::Rect::from_min_max(
-            egui::pos2(rect.left() + 22.0, rect.bottom() - 78.0),
-            egui::pos2(rect.right() - 22.0, rect.bottom() - 16.0),
-        );
-        ui.painter()
-            .rect_filled(strip, CornerRadius::same(16), theme::hero_card());
-        ui.painter().rect_stroke(
-            strip,
-            CornerRadius::same(16),
-            Stroke::new(1.0, theme::hero_card_border()),
-            StrokeKind::Inside,
-        );
-
-        // Sapaan.
-        let top_inner = egui::Rect::from_min_max(
-            egui::pos2(rect.left() + 26.0, rect.top() + 20.0),
-            egui::pos2(rect.right() - 26.0, strip.top() - 8.0),
-        );
-        let mut top = ui.new_child(
-            UiBuilder::new()
-                .max_rect(top_inner)
-                .layout(Layout::top_down(Align::Min)),
-        );
-        top.set_clip_rect(rect);
-        top.label(
-            RichText::new("CETAKIN WORKSPACE")
-                .size(9.5)
-                .strong()
-                .extra_letter_spacing(1.2)
-                .color(theme::hero_muted()),
-        );
-        top.add_space(5.0);
-        let name = if self.studio.trim().is_empty() {
-            "Cetakin".to_string()
-        } else {
-            shorten(self.studio.trim(), 24)
-        };
-        top.label(
-            RichText::new(format!("Halo, {name}!"))
-                .size(25.0)
-                .strong()
-                .color(theme::hero_text()),
-        );
-        top.add_space(3.0);
-        top.label(
-            RichText::new("Susun pas foto, atur margin, lalu ekspor PDF siap cetak.")
-                .size(11.5)
-                .color(theme::hero_muted()),
-        );
-
-        // Pill status di kanan atas hero.
-        let pill = egui::Rect::from_min_size(
-            egui::pos2(rect.right() - 158.0, rect.top() + 20.0),
-            Vec2::new(132.0, 28.0),
-        );
-        ui.painter()
-            .rect_filled(pill, CornerRadius::same(14), theme::hero_card());
-        ui.painter().rect_stroke(
-            pill,
-            CornerRadius::same(14),
-            Stroke::new(1.0, theme::hero_card_border()),
-            StrokeKind::Inside,
-        );
-        ui.painter().circle_filled(
-            egui::pos2(pill.left() + 15.0, pill.center().y),
-            3.5,
-            theme::hero_glow(),
-        );
-        ui.painter().text(
-            egui::pos2(pill.left() + 25.0, pill.center().y),
-            Align2::LEFT_CENTER,
-            if self.photos.is_empty() {
-                "Belum ada foto"
-            } else {
-                "Siap diekspor"
-            },
-            FontId::proportional(10.5),
-            theme::hero_text(),
-        );
-
-        // Isi kartu statistik.
-        let stats_inner = strip.shrink2(Vec2::new(18.0, 8.0));
-        let mut stats = ui.new_child(
-            UiBuilder::new()
-                .max_rect(stats_inner)
-                .layout(Layout::left_to_right(Align::Center)),
-        );
-        stats.set_clip_rect(strip);
-
         let dpi = self
             .min_dpi(&sheet)
             .map(|d| format!("{d:.0} DPI"))
             .unwrap_or_else(|| format!("{} DPI", self.settings.dpi));
-        hero_stat(
-            &mut stats,
-            "Foto diimpor",
-            &format!("{} foto", self.photos.len()),
-        );
-        hero_divider(&mut stats);
-        hero_stat(
-            &mut stats,
-            "Kertas",
-            &format!(
-                "{} · {}",
-                short_paper(self.settings.paper.label()),
-                self.settings.orientation.label()
-            ),
-        );
-        hero_divider(&mut stats);
-        hero_stat(&mut stats, "Resolusi", &dpi);
-        hero_divider(&mut stats);
-        hero_stat(&mut stats, "Kapasitas", &format!("{} slot", sheet.capacity));
 
         let mut import = false;
-        stats.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if theme::primary_button(ui, "Impor Foto").clicked() {
-                import = true;
-            }
-        });
+        egui::Frame::new()
+            .fill(theme::card_fill())
+            .corner_radius(CornerRadius::same(16))
+            .stroke(Stroke::new(1.0, theme::border_soft()))
+            .inner_margin(Margin::symmetric(16, 10))
+            .show(ui, |ui| {
+                ui.set_min_width(ui.available_width());
+                ui.horizontal(|ui| {
+                    hero_stat(ui, "Foto diimpor", &format!("{} foto", self.photos.len()));
+                    hero_divider(ui);
+                    hero_stat(
+                        ui,
+                        "Kertas",
+                        &format!(
+                            "{} · {}",
+                            short_paper(self.settings.paper.label()),
+                            self.settings.orientation.label()
+                        ),
+                    );
+                    hero_divider(ui);
+                    hero_stat(ui, "Resolusi", &dpi);
+                    hero_divider(ui);
+                    hero_stat(ui, "Kapasitas", &format!("{} slot", sheet.capacity));
+
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        if theme::primary_button(ui, "Impor Foto").clicked() {
+                            import = true;
+                        }
+                    });
+                });
+            });
         if import {
             self.import_photos_dialog();
         }

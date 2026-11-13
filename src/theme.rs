@@ -137,13 +137,6 @@ pub struct Palette {
     pub red: Color32,
     pub blue: Color32,
     pub green: Color32,
-    pub hero_top: Color32,
-    pub hero_bottom: Color32,
-    pub hero_glow: Color32,
-    pub hero_text: Color32,
-    pub hero_muted: Color32,
-    pub hero_card: Color32,
-    pub hero_card_border: Color32,
     pub nav_active_bg: Color32,
     pub nav_active_fg: Color32,
     pub island: Color32,
@@ -179,13 +172,6 @@ const TAHOE_DARK: Palette = Palette {
     red: rgb(0xff453a),
     blue: rgb(0x0a84ff),
     green: rgb(0x30d158),
-    hero_top: rgb(0x1a1a1d),
-    hero_bottom: rgb(0x26262b),
-    hero_glow: rgb(0x0a84ff),
-    hero_text: rgb(0xf5f5f7),
-    hero_muted: rgb(0xa6a6ad),
-    hero_card: rgb(0x2c2c2e),
-    hero_card_border: tint(255, 255, 255, 26),
     nav_active_bg: rgb(0x0a84ff),
     nav_active_fg: rgb(0xffffff),
     island: rgb(0x0b0b0d),
@@ -196,46 +182,41 @@ const TAHOE_DARK: Palette = Palette {
     island_field: rgb(0x2c2c2e),
 };
 
+// Mode terang dibuat "kertas lembut", bukan putih murni: permukaan kartu dan
+// panel ditahan di kisaran abu hangat agar tidak menyilaukan saat dipakai lama.
 const TAHOE_LIGHT: Palette = Palette {
     dark: false,
-    bg: rgb(0xf5f5f7),
-    bg_top: rgb(0xfbfbfd),
-    bg_bottom: rgb(0xe7e7ec),
+    bg: rgb(0xe8e8ec),
+    bg_top: rgb(0xefeff2),
+    bg_bottom: rgb(0xdcdce2),
     glow: rgb(0x007aff),
-    sidebar: rgb(0xffffff),
-    card: rgb(0xffffff),
-    card_hover: rgb(0xeeeef2),
-    input: rgb(0xf2f2f7),
-    canvas: rgb(0xe4e4ea),
-    border: tint(0, 0, 0, 30),
-    border_soft: tint(0, 0, 0, 16),
-    shadow: Color32::from_black_alpha(44),
-    text: rgb(0x1d1d1f),
-    muted: rgb(0x6e6e73),
-    dim: rgb(0x8e8e93),
+    sidebar: rgb(0xf3f3f6),
+    card: rgb(0xf7f7fa),
+    card_hover: rgb(0xeaeaf0),
+    input: rgb(0xe9e9ee),
+    canvas: rgb(0xd7d7de),
+    border: tint(0, 0, 0, 34),
+    border_soft: tint(0, 0, 0, 20),
+    shadow: Color32::from_black_alpha(36),
+    text: rgb(0x1c1c1e),
+    muted: rgb(0x5f5f66),
+    dim: rgb(0x77777e),
     accent: rgb(0x007aff),
-    accent_soft: tint(0, 122, 255, 32),
+    accent_soft: tint(0, 122, 255, 30),
     on_accent: rgb(0xffffff),
-    yellow: rgb(0xffcc00),
-    orange: rgb(0xff9500),
+    yellow: rgb(0xd9a400),
+    orange: rgb(0xf08c00),
     red: rgb(0xff3b30),
     blue: rgb(0x007aff),
-    green: rgb(0x34c759),
-    hero_top: rgb(0xf7f7fa),
-    hero_bottom: rgb(0xe9e9ef),
-    hero_glow: rgb(0x007aff),
-    hero_text: rgb(0x1d1d1f),
-    hero_muted: rgb(0x6e6e73),
-    hero_card: rgb(0xffffff),
-    hero_card_border: tint(0, 0, 0, 20),
+    green: rgb(0x2a9d4a),
     nav_active_bg: rgb(0x007aff),
     nav_active_fg: rgb(0xffffff),
-    island: rgb(0xffffff),
-    island_border: tint(0, 0, 0, 24),
-    island_text: rgb(0x1d1d1f),
-    island_muted: rgb(0x6e6e73),
-    island_dim: rgb(0x8e8e93),
-    island_field: rgb(0xf2f2f7),
+    island: rgb(0xf5f5f8),
+    island_border: tint(0, 0, 0, 28),
+    island_text: rgb(0x1c1c1e),
+    island_muted: rgb(0x5f5f66),
+    island_dim: rgb(0x77777e),
+    island_field: rgb(0xe9e9ee),
 };
 
 fn palette_for(f: Flavor) -> Palette {
@@ -346,29 +327,6 @@ pub fn green() -> Color32 {
     palette().green
 }
 
-// ── Hero / banner ──────────────────────────────────────────────────────────
-pub fn hero_top() -> Color32 {
-    palette().hero_top
-}
-pub fn hero_bottom() -> Color32 {
-    palette().hero_bottom
-}
-pub fn hero_glow() -> Color32 {
-    palette().hero_glow
-}
-pub fn hero_text() -> Color32 {
-    palette().hero_text
-}
-pub fn hero_muted() -> Color32 {
-    palette().hero_muted
-}
-pub fn hero_card() -> Color32 {
-    palette().hero_card
-}
-pub fn hero_card_border() -> Color32 {
-    palette().hero_card_border
-}
-
 // ── Navigasi ───────────────────────────────────────────────────────────────
 pub fn nav_active_bg() -> Color32 {
     palette().nav_active_bg
@@ -414,7 +372,7 @@ pub fn paint_background(ui: &egui::Ui) {
 
     // Glow lembut agar latar tidak terasa datar.
     let accent = palette().glow;
-    let strength = if is_dark() { 26 } else { 16 };
+    let strength = if is_dark() { 26 } else { 10 };
     soft_glow(
         ui.painter(),
         egui::pos2(rect.right() - 80.0, rect.top() + 60.0),
@@ -446,44 +404,6 @@ fn soft_glow(painter: &egui::Painter, center: egui::Pos2, radius: f32, color: Co
         mesh.add_triangle(0, i + 1, i + 2);
     }
     painter.add(egui::Shape::mesh(mesh));
-}
-
-/// Lukis banner hero dengan glow aksen yang menyesuaikan mode terang/gelap.
-pub fn paint_hero(painter: &egui::Painter, rect: egui::Rect) {
-    let radius = CornerRadius::same(24);
-    painter.rect_filled(rect, radius, hero_top());
-
-    // Glow di kanan atas & kiri bawah, dijaga tetap di dalam sudut membulat.
-    soft_glow(
-        painter,
-        egui::pos2(
-            rect.right() - rect.width() * 0.22,
-            rect.top() + rect.height() * 0.18,
-        ),
-        rect.height() * 0.9,
-        alpha(hero_glow(), if is_dark() { 90 } else { 42 }),
-    );
-    soft_glow(
-        painter,
-        egui::pos2(rect.left() + rect.width() * 0.12, rect.bottom() - 6.0),
-        rect.height() * 0.55,
-        alpha(hero_bottom(), if is_dark() { 160 } else { 90 }),
-    );
-
-    // Garis tepi halus, seperti pantulan cahaya.
-    painter.rect_stroke(
-        rect,
-        radius,
-        Stroke::new(
-            1.0,
-            if is_dark() {
-                Color32::from_white_alpha(24)
-            } else {
-                Color32::from_black_alpha(14)
-            },
-        ),
-        StrokeKind::Inside,
-    );
 }
 
 // ---------------------------------------------------------------------------
